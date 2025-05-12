@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>東京 9 日旅行</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-white text-gray-800 font-sans">
+
+<!-- 導覽列 -->
+<nav class="fixed top-0 left-0 w-full bg-white border-b z-50">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+    <h1 class="text-xl font-bold text-blue-600">東京9日旅行</h1>
+    <ul class="flex space-x-4 text-sm font-medium">
+      <li><a target="_self" href="index.html" class="text-blue-600">首頁</a></li>
+      <li><a target="_self" href="plan.html" class="hover:text-blue-600">每日行程</a></li>
+      <li><a target="_self" href="map.html" class="hover:text-blue-600">地圖總覽</a></li>
+      <li><a target="_self" href="album.html" class="hover:text-blue-600">相簿</a></li>
+      <li><a target="_self" href="about.html" class="hover:text-blue-600">關於我們</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- 首頁內容 -->
+<main class="pt-24">
+  <div class="relative w-full h-[600px]">
+    <!-- 圖片 -->
+    <img src="https://www.gotokyo.org/tc/see-and-do/attractions/landmarks/images/6_0099_17.jpg"
+         alt="東京地圖"
+         class="w-full h-full object-cover"/>
+
+    <!-- 文字在圖片上 -->
+    <div class="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-40 text-white">
+      <h2 class="text-4xl font-bold mb-4">2025 東京 9 日自由行</h2>
+      <p class="text-lg">旅行日期：7/8 ～ 7/16</p>
+    </div>
+  </div>
+</main>
+
+</body>
+</html>

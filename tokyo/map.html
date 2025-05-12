@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>地圖總覽</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .map-container {
+      position: relative;
+      height: 85vh; /* 讓地圖高度接近整頁 */
+      width: 100%;
+    }
+    .map-container iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
+  </style>
+</head>
+<body class="bg-white text-gray-800 font-sans">
+
+<!-- 導覽列 -->
+<nav class="fixed top-0 left-0 w-full bg-white border-b z-50">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+    <h1 class="text-xl font-bold text-blue-600">東京9日旅行</h1>
+    <ul class="flex space-x-4 text-sm font-medium">
+      <li><a target="_self" href="index.html" class="hover:text-blue-600">首頁</a></li>
+      <li><a target="_self" href="plan.html" class="hover:text-blue-600">每日行程</a></li>
+      <li><a target="_self" href="map.html" class="text-blue-600">地圖總覽</a></li>
+      <li><a target="_self" href="album.html" class="hover:text-blue-600">相簿</a></li>
+      <li><a target="_self" href="about.html" class="hover:text-blue-600">關於我們</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- 主要內容 -->
+<main class="pt-24 pb-12 max-w-7xl mx-auto px-4">
+  <h2 class="text-2xl font-bold text-center text-blue-700 mb-6">景點地圖總覽</h2>
+  <div class="map-container rounded-xl shadow-lg">
+    <iframe
+      src="https://www.google.com/maps/d/u/0/embed?mid=13FXrVl9_TRkeMeLpJwjsEkiTbPlTZmY&ehbc=2E312F&noprof=1"
+      allowfullscreen
+    ></iframe>
+  </div>
+</main>
+
+</body>
+</html>
