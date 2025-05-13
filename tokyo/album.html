@@ -50,19 +50,22 @@
     formData.append('file', file);
     formData.append('upload_preset', 'tokyo_album');
 
-    const res = await fetch('https://api.cloudinary.com/v1_1/Untitled/image/upload', {
+    const res = await fetch('https://api.cloudinary.com/v1_1/dd2lnjt52/image/upload', {
       method: 'POST',
       body: formData
     });
 
     const data = await res.json();
-    const imageUrl = data.secure_url;
-
-    const img = document.createElement('img');
-    img.src = imageUrl;
-    img.alt = '上傳圖片';
-    img.className = 'w-full h-auto rounded shadow';
-    document.getElementById('uploadedImages').appendChild(img);
+    if (data.secure_url) {
+      const img = document.createElement('img');
+      img.src = data.secure_url;
+      img.alt = '上傳圖片';
+      img.className = 'w-full h-auto rounded shadow';
+      document.getElementById('uploadedImages').appendChild(img);
+    } else {
+      alert('上傳失敗，請重試');
+      console.error(data);
+    }
   }
 </script>
 
