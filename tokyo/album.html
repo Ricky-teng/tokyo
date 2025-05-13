@@ -1,40 +1,78 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
-  <title>Upload Test</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tokyo Album</title>
 </head>
 <body>
-  <h1>Upload Photo to Cloudinary</h1>
-  <input type="file" id="file-upload" />
-  <button onclick="uploadImage()">Upload</button>
+  <h1>旅遊相簿</h1>
+  <input type="file" id="fileInput" accept="image/*" />
+  <button onclick="uploadImage()">上傳圖片</button>
   <div id="preview"></div>
 
   <script>
-    const cloudName = "dd2lnjt52";
-    const uploadPreset = "tokyo_album";
-
     async function uploadImage() {
-      const fileInput = document.getElementById("file-upload");
+      const fileInput = document.getElementById('fileInput');
       const file = fileInput.files[0];
-      if (!file) return alert("Please select a file");
+      if (!file) return alert("請選擇圖片");
+
+      // 若圖片 > 10MB，則壓縮
+      let finalFile = file;
+      if (file.size > 10 * 1024 * 1024) {
+        const compressed = await compressImage(file);
+        if (!compressed) return alert("壓縮失敗");
+        finalFile = compressed;
+      }
 
       const formData = new FormData();
-      formData.append("file", file);
-      formData.append("upload_preset", uploadPreset);
+      formData.append("file", finalFile);
+      formData.append("upload_preset", "tokyo_album");
 
-      const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+      const res = await fetch("https://api.cloudinary.com/v1_1/dd2lnjt52/image/upload", {
         method: "POST",
         body: formData
       });
 
-      const data = await response.json();
-      if (data.secure_url) {
-        document.getElementById("preview").innerHTML = `<img src="${data.secure_url}" width="200" />`;
+      const data = await res.json();
+      if (res.ok) {
+        const img = document.createElement("img");
+        img.src = data.secure_url;
+        img.style.maxWidth = "300px";
+        document.getElementById("preview").appendChild(img);
       } else {
-        console.error("Upload failed:", data);
-        alert("Upload failed. See console.");
+        alert("上傳失敗：" + (data.error?.message || "未知錯誤"));
       }
+    }
+
+    function compressImage(file) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        const reader = new FileReader();
+        reader.onload = e => {
+          img.src = e.target.result;
+        };
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const MAX_WIDTH = 1920;
+          const scale = Math.min(MAX_WIDTH / img.width, 1);
+          canvas.width = img.width * scale;
+          canvas.height = img.height * scale;
+
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+          canvas.toBlob(blob => {
+            if (blob.size > 10 * 1024 * 1024) {
+              alert("圖片太大，壓縮後仍超過10MB，請選擇其他圖片");
+              resolve(null);
+            } else {
+              resolve(new File([blob], file.name, { type: blob.type }));
+            }
+          }, "image/jpeg", 0.85); // 85% 品質
+        };
+        reader.readAsDataURL(file);
+      });
     }
   </script>
 </body>
