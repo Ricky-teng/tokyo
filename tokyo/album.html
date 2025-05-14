@@ -1,180 +1,127 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
-  <meta charset="UTF-8">
-  <title>旅遊相簿</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>相簿</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
-  <script src="https://unpkg.com/browser-image-compression@1.0.15/dist/browser-image-compression.js"></script>
-  <style>
-    body { font-family: sans-serif; padding: 20px; background: #f3f9fb; }
-    h1 { margin-bottom: 20px; }
-    .upload-section { margin-bottom: 20px; }
-    #photoContainer { display: flex; flex-wrap: wrap; gap: 15px; }
-    .photo-item {
-      position: relative;
-      width: 160px;
-    }
-    .photo-item img {
-      width: 100%;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px #aaa;
-    }
-
-    /* 三點按鈕樣式 */
-    .menu-btn {
-      position: absolute;
-      top: 5px;
-      right: 5px;
-      background: rgba(0, 0, 0, 0.6);
-      color: white;
-      border: none;
-      border-radius: 50%;
-      width: 24px;
-      height: 24px;
-      font-weight: bold;
-      cursor: pointer;
-      font-size: 16px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    /* 下拉選單 */
-    .dropdown {
-      position: absolute;
-      top: 30px;
-      right: 5px;
-      background: white;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      box-shadow: 0 2px 8px #ccc;
-      display: none;
-      flex-direction: column;
-      z-index: 10;
-    }
-
-    .dropdown button {
-      background: white;
-      border: none;
-      padding: 8px 12px;
-      text-align: left;
-      cursor: pointer;
-      font-size: 14px;
-    }
-
-    .dropdown button:hover {
-      background: #f0f0f0;
-    }
-  </style>
+  <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.1/dist/browser-image-compression.js"></script>
 </head>
-<body>
+<body class="bg-gray-100 min-h-screen">
+  <div class="max-w-4xl mx-auto p-4">
+    <h1 class="text-3xl font-bold mb-4 text-center">📸 東京旅遊相簿</h1>
 
-  <h1>旅遊相簿</h1>
+    <!-- 上傳區塊 -->
+    <div class="mb-6 text-center">
+      <input type="file" id="fileInput" accept="image/*" multiple class="block mx-auto mb-2" />
+      <button onclick="uploadImages()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">上傳照片</button>
+    </div>
 
-  <div class="upload-section">
-    <input type="file" id="uploadInput" accept="image/*">
-    <button onclick="handleUpload()">上傳照片</button>
+    <!-- 相片牆 -->
+    <div id="photoGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"></div>
   </div>
 
-  <div id="photoContainer"></div>
-
   <script>
-    // ✅ Firebase 設定
     const firebaseConfig = {
       apiKey: "AIzaSyDFh075x68NVbXfkvlPv4wa3uNi-rilcEk",
       authDomain: "tokyo-14278.firebaseapp.com",
-      projectId: "tokyo-14278"
+      projectId: "tokyo-14278",
     };
+
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const photosRef = db.collection("photos");
 
-    // ✅ 顯示所有照片
-    function loadPhotos() {
-      document.getElementById("photoContainer").innerHTML = "";
-      photosRef.get().then(snapshot => {
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          const imageUrl = data.url;
-          if (imageUrl) {
-            const div = document.createElement("div");
-            div.className = "photo-item";
-            div.innerHTML = `
-              <img src="${imageUrl}" alt="旅遊照片">
-              <button class="menu-btn" onclick="toggleDropdown(this)">⋯</button>
-              <div class="dropdown">
-                <button onclick="downloadPhoto('${imageUrl}')">📥 下載</button>
-                <button onclick="deletePhoto('${doc.id}')">🗑️ 刪除</button>
-              </div>
-            `;
-            document.getElementById("photoContainer").appendChild(div);
-          }
+    const cloudName = "dd2lnjt52";
+    const uploadPreset = "tokyo_album";
+
+    async function uploadImages() {
+      const files = document.getElementById("fileInput").files;
+      if (!files.length) return;
+
+      for (const file of files) {
+        const compressed = await imageCompression(file, {
+          maxSizeMB: 10,
+          useWebWorker: true
         });
-      });
-    }
 
-    // ✅ 上傳照片
-    async function handleUpload() {
-      const fileInput = document.getElementById("uploadInput");
-      const file = fileInput.files[0];
-      if (!file) return alert("請選擇圖片");
+        const formData = new FormData();
+        formData.append("file", compressed);
+        formData.append("upload_preset", uploadPreset);
 
-      const options = {
-        maxSizeMB: 1,
-        maxWidthOrHeight: 1280,
-        useWebWorker: true
-      };
-      const compressedFile = await imageCompression(file, options);
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+          method: "POST",
+          body: formData
+        });
 
-      const formData = new FormData();
-      formData.append("file", compressedFile);
-      formData.append("upload_preset", "tokyo_album");
-      const res = await fetch("https://api.cloudinary.com/v1_1/dd2lnjt52/image/upload", {
-        method: "POST",
-        body: formData
-      });
-      const data = await res.json();
-      const imageUrl = data.secure_url;
-
-      await photosRef.add({ url: imageUrl });
-      loadPhotos();
-    }
-
-    // ✅ 刪除照片
-    function deletePhoto(docId) {
-      photosRef.doc(docId).delete().then(() => {
-        console.log("刪除成功");
-        loadPhotos();
-      });
-    }
-
-    // ✅ 下載照片
-    function downloadPhoto(url) {
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "photo.jpg";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    }
-
-    // ✅ 展開/收合功能選單
-    function toggleDropdown(btn) {
-      const dropdown = btn.nextElementSibling;
-      const allDropdowns = document.querySelectorAll(".dropdown");
-      allDropdowns.forEach(d => {
-        if (d !== dropdown) d.style.display = "none";
-      });
-      dropdown.style.display = dropdown.style.display === "flex" ? "none" : "flex";
-    }
-
-    // 點擊頁面其他地方關閉選單
-    document.addEventListener("click", (e) => {
-      if (!e.target.classList.contains("menu-btn")) {
-        document.querySelectorAll(".dropdown").forEach(d => d.style.display = "none");
+        const data = await res.json();
+        if (data.secure_url) {
+          await photosRef.add({
+            url: data.secure_url,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }
       }
-    });
+
+      loadPhotos(); // 重新載入
+    }
+
+    async function loadPhotos() {
+      const photoGrid = document.getElementById("photoGrid");
+      photoGrid.innerHTML = "";
+
+      const snapshot = await photosRef.orderBy("createdAt", "desc").get();
+      snapshot.forEach(doc => {
+        const { url } = doc.data();
+        const id = doc.id;
+
+        const container = document.createElement("div");
+        container.className = "relative group";
+
+        const img = document.createElement("img");
+        img.src = url;
+        img.className = "rounded shadow w-full h-auto";
+
+        // 三點按鈕
+        const menuBtn = document.createElement("button");
+        menuBtn.innerHTML = "⋮";
+        menuBtn.className = "absolute top-1 right-1 bg-white rounded-full p-1 shadow hover:bg-gray-200";
+        menuBtn.onclick = () => {
+          const menu = document.getElementById(`menu-${id}`);
+          menu.classList.toggle("hidden");
+        };
+
+        // 選單
+        const menu = document.createElement("div");
+        menu.id = `menu-${id}`;
+        menu.className = "hidden absolute top-8 right-1 bg-white border rounded shadow z-10";
+        menu.innerHTML = `
+          <button class="block w-full px-4 py-2 text-left hover:bg-gray-100" onclick="downloadImage('${url}')">下載</button>
+          <button class="block w-full px-4 py-2 text-left text-red-500 hover:bg-gray-100" onclick="deletePhoto('${id}')">刪除</button>
+        `;
+
+        container.appendChild(img);
+        container.appendChild(menuBtn);
+        container.appendChild(menu);
+        photoGrid.appendChild(container);
+      });
+    }
+
+    async function deletePhoto(id) {
+      if (confirm("確定要刪除這張照片嗎？")) {
+        await photosRef.doc(id).delete();
+        loadPhotos();
+      }
+    }
+
+    function downloadImage(url) {
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "photo.jpg";
+      link.click();
+    }
 
     // 初始載入
     loadPhotos();
