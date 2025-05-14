@@ -1,27 +1,81 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>Tokyo Album</title>
+  <title>上傳你的東京旅遊照片</title>
   <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
+      background-color: #f9fefe;
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      color: #333;
     }
-    img {
-      max-width: 300px;
-      margin-top: 10px;
-      display: block;
+
+    .container {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      max-width: 500px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      text-align: center;
+    }
+
+    h1 {
+      color: #2a9d8f;
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+
+    input[type="file"] {
+      margin: 20px 0;
+    }
+
+    button {
+      background: linear-gradient(to right, #2a9d8f, #3ec1d3);
+      border: none;
+      padding: 12px 25px;
+      border-radius: 6px;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    button:hover {
+      background: linear-gradient(to right, #21867a, #2caabc);
+    }
+
+    #status {
+      margin-top: 15px;
+      font-size: 15px;
+      color: #555;
+    }
+
+    #preview {
+      margin-top: 20px;
+      max-width: 100%;
+      border-radius: 8px;
+      border: 2px solid #e0f7f4;
     }
   </style>
 </head>
 <body>
-  <h1>上傳你的東京旅遊照片</h1>
-  <input type="file" id="imageInput" accept="image/*" />
-  <button onclick="uploadImage()">上傳圖片</button>
-  <p id="status"></p>
-  <img id="preview" src="" alt="" />
+  <div class="container">
+    <h1>上傳你的東京旅遊照片</h1>
+    <input type="file" id="imageInput" accept="image/*" />
+    <br>
+    <button onclick="uploadImage()">上傳圖片</button>
+    <p id="status"></p>
+    <img id="preview" src="" alt="預覽圖片" />
+  </div>
 
   <script>
     async function uploadImage() {
@@ -41,7 +95,7 @@
 
       if (file.size > 10 * 1024 * 1024) {
         try {
-          status.textContent = "圖片超過10MB，正在壓縮...";
+          status.textContent = "圖片超過 10MB，正在壓縮...";
           const options = {
             maxSizeMB: 9.5,
             maxWidthOrHeight: 1920,
