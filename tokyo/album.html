@@ -11,19 +11,60 @@
     h1 { margin-bottom: 20px; }
     .upload-section { margin-bottom: 20px; }
     #photoContainer { display: flex; flex-wrap: wrap; gap: 15px; }
-    .photo-item { position: relative; }
-    .photo-item img { width: 160px; height: auto; border-radius: 8px; box-shadow: 0 2px 8px #aaa; }
-    .delete-btn {
+    .photo-item {
+      position: relative;
+      width: 160px;
+    }
+    .photo-item img {
+      width: 100%;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px #aaa;
+    }
+
+    /* 三點按鈕樣式 */
+    .menu-btn {
       position: absolute;
       top: 5px;
       right: 5px;
-      background: red;
+      background: rgba(0, 0, 0, 0.6);
       color: white;
       border: none;
-      padding: 4px 6px;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      font-weight: bold;
       cursor: pointer;
-      border-radius: 4px;
-      font-size: 12px;
+      font-size: 16px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* 下拉選單 */
+    .dropdown {
+      position: absolute;
+      top: 30px;
+      right: 5px;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px #ccc;
+      display: none;
+      flex-direction: column;
+      z-index: 10;
+    }
+
+    .dropdown button {
+      background: white;
+      border: none;
+      padding: 8px 12px;
+      text-align: left;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .dropdown button:hover {
+      background: #f0f0f0;
     }
   </style>
 </head>
@@ -49,9 +90,9 @@
     const db = firebase.firestore();
     const photosRef = db.collection("photos");
 
-    // ✅ 初始化載入照片
+    // ✅ 顯示所有照片
     function loadPhotos() {
-      document.getElementById("photoContainer").innerHTML = ""; // 清空
+      document.getElementById("photoContainer").innerHTML = "";
       photosRef.get().then(snapshot => {
         snapshot.forEach(doc => {
           const data = doc.data();
@@ -61,7 +102,11 @@
             div.className = "photo-item";
             div.innerHTML = `
               <img src="${imageUrl}" alt="旅遊照片">
-              <button class="delete-btn" onclick="deletePhoto('${doc.id}')">刪除</button>
+              <button class="menu-btn" onclick="toggleDropdown(this)">⋯</button>
+              <div class="dropdown">
+                <button onclick="downloadPhoto('${imageUrl}')">📥 下載</button>
+                <button onclick="deletePhoto('${doc.id}')">🗑️ 刪除</button>
+              </div>
             `;
             document.getElementById("photoContainer").appendChild(div);
           }
@@ -69,21 +114,12 @@
       });
     }
 
-    // ✅ 刪除照片
-    function deletePhoto(docId) {
-      photosRef.doc(docId).delete().then(() => {
-        console.log("刪除成功");
-        loadPhotos(); // 重新載入
-      });
-    }
-
-    // ✅ 上傳照片（壓縮後送 Cloudinary）
+    // ✅ 上傳照片
     async function handleUpload() {
       const fileInput = document.getElementById("uploadInput");
       const file = fileInput.files[0];
       if (!file) return alert("請選擇圖片");
 
-      // 壓縮圖片
       const options = {
         maxSizeMB: 1,
         maxWidthOrHeight: 1280,
@@ -91,10 +127,9 @@
       };
       const compressedFile = await imageCompression(file, options);
 
-      // 上傳到 Cloudinary
       const formData = new FormData();
       formData.append("file", compressedFile);
-      formData.append("upload_preset", "tokyo_album"); // 你的 unsigned preset
+      formData.append("upload_preset", "tokyo_album");
       const res = await fetch("https://api.cloudinary.com/v1_1/dd2lnjt52/image/upload", {
         method: "POST",
         body: formData
@@ -102,10 +137,44 @@
       const data = await res.json();
       const imageUrl = data.secure_url;
 
-      // 存到 Firestore
       await photosRef.add({ url: imageUrl });
-      loadPhotos(); // 重新載入
+      loadPhotos();
     }
+
+    // ✅ 刪除照片
+    function deletePhoto(docId) {
+      photosRef.doc(docId).delete().then(() => {
+        console.log("刪除成功");
+        loadPhotos();
+      });
+    }
+
+    // ✅ 下載照片
+    function downloadPhoto(url) {
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "photo.jpg";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    // ✅ 展開/收合功能選單
+    function toggleDropdown(btn) {
+      const dropdown = btn.nextElementSibling;
+      const allDropdowns = document.querySelectorAll(".dropdown");
+      allDropdowns.forEach(d => {
+        if (d !== dropdown) d.style.display = "none";
+      });
+      dropdown.style.display = dropdown.style.display === "flex" ? "none" : "flex";
+    }
+
+    // 點擊頁面其他地方關閉選單
+    document.addEventListener("click", (e) => {
+      if (!e.target.classList.contains("menu-btn")) {
+        document.querySelectorAll(".dropdown").forEach(d => d.style.display = "none");
+      }
+    });
 
     // 初始載入
     loadPhotos();
