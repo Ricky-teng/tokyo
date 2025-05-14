@@ -1,108 +1,101 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <title>Tokyo Trip Album</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/browser-image-compression/2.0.1/browser-image-compression.min.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <title>旅遊相簿</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      background-color: #f0f8ff;
+    }
+    h1 {
+      color: #2c3e50;
+    }
+    #photoContainer {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .photo-item {
+      position: relative;
+      border: 1px solid #ccc;
+      padding: 8px;
+      border-radius: 8px;
+      background: white;
+    }
+    .photo-item img {
+      max-width: 200px;
+      border-radius: 4px;
+      display: block;
+    }
+    .delete-btn {
+      background-color: #e74c3c;
+      color: white;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    .delete-btn:hover {
+      background-color: #c0392b;
+    }
+  </style>
 </head>
-<body class="bg-white text-gray-800 p-4">
+<body>
 
-  <h1 class="text-2xl font-bold mb-4">Tokyo Trip Album</h1>
+<h1>旅遊相簿</h1>
+<div id="photoContainer"></div>
 
-  <!-- 上傳區塊 -->
-  <div class="mb-6">
-    <input type="file" id="fileInput" accept="image/*" class="mb-2">
-    <button id="uploadBtn" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Upload</button>
-    <p id="uploadStatus" class="text-sm mt-2 text-gray-600"></p>
-  </div>
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 
-  <!-- 照片顯示區 -->
-  <div id="photoGallery" class="grid grid-cols-2 md:grid-cols-3 gap-4">
-    <!-- 照片會插入在這 -->
-  </div>
+<script>
+  // ✅ 你的 Firebase 設定
+  const firebaseConfig = {
+    apiKey: "AIzaSyDFh075x68NVbXfkvlPv4wa3uNi-rilcEk",
+    authDomain: "tokyo-14278.firebaseapp.com",
+    projectId: "tokyo-14278",
+  };
 
-  <script>
-    // 初始化 Firebase
-    const firebaseConfig = {
-      apiKey: "AIzaSyDFh075x68NVbXfkvlPv4wa3uNi-rilcEk",
-      authDomain: "tokyo-14278.firebaseapp.com",
-      projectId: "tokyo-14278",
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+  // ✅ 初始化 Firebase
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
 
-    const fileInput = document.getElementById('fileInput');
-    const uploadBtn = document.getElementById('uploadBtn');
-    const uploadStatus = document.getElementById('uploadStatus');
-    const gallery = document.getElementById('photoGallery');
+  // ✅ 載入 Firestore 中的圖片
+  function loadPhotos() {
+    const container = document.getElementById("photoContainer");
+    container.innerHTML = "";
 
-    async function uploadImage(file) {
-      uploadStatus.innerText = "Compressing image...";
-
-      // 壓縮圖片（限制在 10MB 以下）
-      const compressedFile = await imageCompression(file, {
-        maxSizeMB: 9.5,
-        maxWidthOrHeight: 1920,
-        useWebWorker: true,
+    db.collection("photos").orderBy("timestamp", "desc").onSnapshot((snapshot) => {
+      container.innerHTML = ""; // 清空後重新渲染
+      snapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        const div = document.createElement("div");
+        div.className = "photo-item";
+        div.innerHTML = `
+          <img src="${data.imageUrl}" alt="旅遊照片">
+          <button class="delete-btn" onclick="deletePhoto('${doc.id}')">刪除</button>
+        `;
+        container.appendChild(div);
       });
-
-      uploadStatus.innerText = "Uploading...";
-
-      // 建立 FormData 並傳到 Cloudinary
-      const formData = new FormData();
-      formData.append("file", compressedFile);
-      formData.append("upload_preset", "tokyo_album");
-
-      const res = await fetch("https://api.cloudinary.com/v1_1/dd2lnjt52/image/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-
-      if (data.secure_url) {
-        // 存進 Firestore
-        await db.collection("photos").add({
-          url: data.secure_url,
-          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-        });
-        uploadStatus.innerText = "Upload successful!";
-        displayImage(data.secure_url);
-      } else {
-        uploadStatus.innerText = "Upload failed.";
-        console.error(data);
-      }
-    }
-
-    function displayImage(url) {
-      const img = document.createElement("img");
-      img.src = url;
-      img.alt = "Uploaded Photo";
-      img.className = "w-full rounded shadow";
-      gallery.prepend(img);
-    }
-
-    async function loadImages() {
-      const snapshot = await db.collection("photos").orderBy("timestamp", "desc").get();
-      snapshot.forEach(doc => {
-        displayImage(doc.data().url);
-      });
-    }
-
-    uploadBtn.addEventListener("click", () => {
-      const file = fileInput.files[0];
-      if (!file) {
-        uploadStatus.innerText = "Please select an image file.";
-        return;
-      }
-      uploadImage(file);
     });
+  }
 
-    // 初始化時載入現有圖片
-    loadImages();
-  </script>
+  // ✅ 刪除 Firestore 中的圖片記錄（⚠️不會刪除 Cloudinary 圖片）
+  function deletePhoto(docId) {
+    if (confirm("確定要刪除這張圖片嗎？")) {
+      db.collection("photos").doc(docId).delete()
+        .then(() => console.log("已刪除 Firestore 資料"))
+        .catch((err) => console.error("刪除失敗：", err));
+    }
+  }
+
+  // 初始化相簿
+  loadPhotos();
+</script>
+
 </body>
 </html>
