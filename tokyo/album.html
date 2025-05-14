@@ -1,78 +1,80 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
   <title>Tokyo Album</title>
+  <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    img {
+      max-width: 300px;
+      margin-top: 10px;
+      display: block;
+    }
+  </style>
 </head>
 <body>
-  <h1>旅遊相簿</h1>
-  <input type="file" id="fileInput" accept="image/*" />
+  <h1>上傳你的東京旅遊照片</h1>
+  <input type="file" id="imageInput" accept="image/*" />
   <button onclick="uploadImage()">上傳圖片</button>
-  <div id="preview"></div>
+  <p id="status"></p>
+  <img id="preview" src="" alt="" />
 
   <script>
     async function uploadImage() {
-      const fileInput = document.getElementById('fileInput');
-      const file = fileInput.files[0];
-      if (!file) return alert("請選擇圖片");
+      const input = document.getElementById('imageInput');
+      const status = document.getElementById('status');
+      const preview = document.getElementById('preview');
+      const file = input.files[0];
 
-      // 若圖片 > 10MB，則壓縮
-      let finalFile = file;
+      if (!file) {
+        status.textContent = "請選擇圖片";
+        return;
+      }
+
+      status.textContent = "處理中...";
+
+      let uploadFile = file;
+
       if (file.size > 10 * 1024 * 1024) {
-        const compressed = await compressImage(file);
-        if (!compressed) return alert("壓縮失敗");
-        finalFile = compressed;
+        try {
+          status.textContent = "圖片超過10MB，正在壓縮...";
+          const options = {
+            maxSizeMB: 9.5,
+            maxWidthOrHeight: 1920,
+            useWebWorker: true
+          };
+          uploadFile = await imageCompression(file, options);
+        } catch (err) {
+          status.textContent = "壓縮失敗：" + err.message;
+          return;
+        }
       }
 
       const formData = new FormData();
-      formData.append("file", finalFile);
+      formData.append("file", uploadFile);
       formData.append("upload_preset", "tokyo_album");
 
-      const res = await fetch("https://api.cloudinary.com/v1_1/dd2lnjt52/image/upload", {
-        method: "POST",
-        body: formData
-      });
+      try {
+        const res = await fetch("https://api.cloudinary.com/v1_1/dd2lnjt52/image/upload", {
+          method: "POST",
+          body: formData
+        });
 
-      const data = await res.json();
-      if (res.ok) {
-        const img = document.createElement("img");
-        img.src = data.secure_url;
-        img.style.maxWidth = "300px";
-        document.getElementById("preview").appendChild(img);
-      } else {
-        alert("上傳失敗：" + (data.error?.message || "未知錯誤"));
+        const data = await res.json();
+
+        if (data.secure_url) {
+          status.textContent = "✅ 上傳成功！";
+          preview.src = data.secure_url;
+        } else {
+          status.textContent = "❌ 上傳失敗：" + (data.error?.message || '未知錯誤');
+        }
+      } catch (err) {
+        status.textContent = "❌ 錯誤：" + err.message;
       }
-    }
-
-    function compressImage(file) {
-      return new Promise((resolve) => {
-        const img = new Image();
-        const reader = new FileReader();
-        reader.onload = e => {
-          img.src = e.target.result;
-        };
-        img.onload = () => {
-          const canvas = document.createElement("canvas");
-          const MAX_WIDTH = 1920;
-          const scale = Math.min(MAX_WIDTH / img.width, 1);
-          canvas.width = img.width * scale;
-          canvas.height = img.height * scale;
-
-          const ctx = canvas.getContext("2d");
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-          canvas.toBlob(blob => {
-            if (blob.size > 10 * 1024 * 1024) {
-              alert("圖片太大，壓縮後仍超過10MB，請選擇其他圖片");
-              resolve(null);
-            } else {
-              resolve(new File([blob], file.name, { type: blob.type }));
-            }
-          }, "image/jpeg", 0.85); // 85% 品質
-        };
-        reader.readAsDataURL(file);
-      });
     }
   </script>
 </body>
