@@ -11,6 +11,17 @@
   <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.1/dist/browser-image-compression.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
+<!-- 上傳按鈕區域 -->
+<div class="my-4">
+  <input type="file" id="uploadInput" multiple accept="image/*" class="mb-2" />
+  <button onclick="handleUpload()" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+    上傳圖片
+  </button>
+</div>
+
+<!-- 顯示圖片的容器 -->
+<div id="photoContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+
   <div class="max-w-4xl mx-auto p-4">
     <h1 class="text-3xl font-bold mb-4 text-center">📸 東京旅遊相簿</h1>
 
@@ -127,5 +138,90 @@
     // 初始載入
     loadPhotos();
   </script>
+  <script type="module">
+  import imageCompression from "https://cdn.skypack.dev/browser-image-compression";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDFh075x68NVbXfkvlPv4wa3uNi-rilcEk",
+    authDomain: "tokyo-14278.firebaseapp.com",
+    projectId: "tokyo-14278",
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  const photosRef = db.collection("photos");
+
+  const deletePassword = "tokyo123"; // 🛡️ 你可以換掉密碼
+
+  async function loadPhotos() {
+    const container = document.getElementById("photoContainer");
+    container.innerHTML = "";
+    const snapshot = await photosRef.orderBy("timestamp", "desc").get();
+
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const photoBox = document.createElement("div");
+      photoBox.className = "relative group border rounded overflow-hidden shadow";
+
+      photoBox.innerHTML = `
+        <img src="${data.url}" alt="photo" class="w-full h-64 object-cover" />
+        <div class="absolute top-2 right-2">
+          <button class="text-white bg-black bg-opacity-50 p-1 rounded-full hover:bg-opacity-70 focus:outline-none group">
+            ⋮
+          </button>
+          <div class="hidden group-hover:block absolute right-0 mt-2 bg-white shadow rounded z-10">
+            <button class="block px-4 py-2 text-sm hover:bg-gray-100 w-full text-left deleteBtn">🗑 刪除</button>
+            <a href="${data.url}" download class="block px-4 py-2 text-sm hover:bg-gray-100">⬇️ 下載</a>
+          </div>
+        </div>
+      `;
+
+      photoBox.querySelector(".deleteBtn").addEventListener("click", () => {
+        const input = prompt("請輸入刪除密碼");
+        if (input !== deletePassword) {
+          alert("密碼錯誤，無法刪除！");
+          return;
+        }
+        if (confirm("確定要刪除這張圖片嗎？")) {
+          photosRef.doc(doc.id).delete().then(loadPhotos);
+        }
+      });
+
+      container.appendChild(photoBox);
+    });
+  }
+
+  async function handleUpload() {
+    const files = document.getElementById("uploadInput").files;
+    if (!files.length) return alert("請選擇圖片");
+
+    for (const file of files) {
+      const options = {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1280,
+        useWebWorker: true
+      };
+      const compressed = await imageCompression(file, options);
+
+      const formData = new FormData();
+      formData.append("file", compressed);
+      formData.append("upload_preset", "tokyo_album");
+
+      const res = await fetch("https://api.cloudinary.com/v1_1/dd2lnjt52/image/upload", {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await res.json();
+      await photosRef.add({ url: data.secure_url, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+    }
+
+    loadPhotos();
+    document.getElementById("uploadInput").value = ""; // 清空
+  }
+
+  loadPhotos();
+</script>
+
 </body>
 </html>
