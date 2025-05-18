@@ -4,23 +4,31 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>相簿</title>
+  <title>東京相簿</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.1/dist/browser-image-compression.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
-  <!-- 上傳按鈕 -->
-  <div class="my-4 text-center">
-    <input type="file" id="uploadInput" multiple accept="image/*" class="mb-2" />
-    <button onclick="handleUpload()" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-      上傳圖片
-    </button>
-  </div>
 
-  <!-- 照片容器 -->
-  <div id="photoContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 px-4 pb-8"></div>
+  <!-- 主容器 -->
+  <main class="max-w-5xl mx-auto px-4 py-8">
+
+    <!-- 標題 -->
+    <h1 class="text-3xl font-bold text-center mb-6 text-blue-700">📸 東京旅行相簿</h1>
+
+    <!-- 上傳區塊 -->
+    <section class="bg-white p-6 rounded-lg shadow mb-8 text-center">
+      <input type="file" id="uploadInput" multiple accept="image/*" class="block mx-auto mb-4" />
+      <button onclick="handleUpload()" class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+        上傳圖片
+      </button>
+    </section>
+
+    <!-- 圖片顯示區 -->
+    <div id="photoContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6"></div>
+  </main>
 
   <script>
     const firebaseConfig = {
@@ -32,25 +40,26 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const photosRef = db.collection("photos");
-    const deletePassword = "Aa123321@@";
+    const deletePassword = "tokyo123";
 
     async function loadPhotos() {
       const container = document.getElementById("photoContainer");
       container.innerHTML = "";
       const snapshot = await photosRef.orderBy("timestamp", "desc").get();
+
       snapshot.forEach(doc => {
         const data = doc.data();
         const photoBox = document.createElement("div");
-        photoBox.className = "relative group border rounded overflow-hidden shadow";
+        photoBox.className = "relative group rounded-lg overflow-hidden shadow hover:shadow-lg transition";
 
         photoBox.innerHTML = `
           <img src="${data.url}" alt="photo" class="w-full h-64 object-cover" />
           <div class="absolute top-2 right-2">
-            <button class="text-white bg-black bg-opacity-50 p-1 rounded-full hover:bg-opacity-70 focus:outline-none group">
+            <button class="text-white bg-black bg-opacity-40 p-1 rounded-full hover:bg-opacity-70 focus:outline-none">
               ⋮
             </button>
-            <div class="hidden group-hover:block absolute right-0 mt-2 bg-white shadow rounded z-10">
-              <button class="block px-4 py-2 text-sm hover:bg-gray-100 w-full text-left deleteBtn">🗑 刪除</button>
+            <div class="hidden group-hover:block absolute right-0 mt-2 bg-white shadow-md rounded z-10">
+              <button class="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full text-left deleteBtn">🗑 刪除</button>
               <a href="${data.url}" download class="block px-4 py-2 text-sm hover:bg-gray-100">⬇️ 下載</a>
             </div>
           </div>
