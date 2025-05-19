@@ -2,141 +2,149 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tokyo 相簿</title>
-  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>東京相簿</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    .spinner {
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid #3b82f6;
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      animation: spin 1s linear infinite;
-      margin: 40px auto;
-    }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-  </style>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
 </head>
-<body class="bg-white text-gray-800 min-h-screen">
+<body class="bg-gray-50 text-gray-800">
 
-  <div class="max-w-4xl mx-auto px-4 py-6">
-    <h1 class="text-3xl font-bold mb-4 text-center">📷 Tokyo 相簿</h1>
+<!-- 導覽列 -->
+<nav class="bg-white border-b shadow fixed top-0 left-0 w-full z-50">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+    <h1 class="text-xl font-bold text-blue-600">東京相簿</h1>
+    <ul class="flex space-x-4 text-sm font-medium">
+      <li><a href="index.html" class="hover:text-blue-600">首頁</a></li>
+      <li><a href="album.html" class="text-blue-600">相簿</a></li>
+    </ul>
+  </div>
+</nav>
 
-    <!-- 上傳欄位 -->
-    <div class="flex flex-col items-center gap-4 mb-6">
-      <input type="file" id="uploadInput" multiple accept="image/*" class="block text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
-      <button onclick="handleUpload()" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-4 py-2 rounded">
-        上傳照片
-      </button>
-      <progress id="uploadProgress" value="0" max="100" class="w-1/2 h-2 hidden"></progress>
-    </div>
-
-    <!-- 旋轉圈 -->
-    <div id="loadingSpinner" class="spinner"></div>
-
-    <!-- 相簿照片 -->
-    <div id="photoContainer" class="grid grid-cols-2 md:grid-cols-3 gap-4"></div>
+<main class="pt-24 max-w-5xl mx-auto px-4">
+  <!-- 上傳 -->
+  <div class="flex items-center justify-between mb-4">
+    <input type="file" id="uploadInput" multiple class="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:border file:rounded file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+    <button onclick="handleUpload()" class="ml-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">上傳</button>
   </div>
 
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyDFh075x68NVbXfkvlPv4wa3uNi-rilcEk",
-      authDomain: "tokyo-14278.firebaseapp.com",
-      projectId: "tokyo-14278",
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const photosRef = db.collection("photos");
+  <!-- 排序選單 -->
+  <div class="flex justify-end mb-4">
+    <label for="sortSelect" class="mr-2 text-gray-700">排序方式：</label>
+    <select id="sortSelect" class="border rounded px-2 py-1 text-sm">
+      <option value="newest">由新到舊</option>
+      <option value="oldest">由舊到新</option>
+      <option value="likes">喜愛程度</option>
+    </select>
+  </div>
 
-    const deletePassword = "Aa123321@@"; // ⛔ 替換成你自己的密碼
+  <!-- loading 圈 -->
+  <div id="loading" class="flex justify-center items-center py-12 hidden">
+    <svg class="animate-spin h-8 w-8 text-blue-600" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" />
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+    </svg>
+  </div>
 
-    async function loadPhotos() {
-      const container = document.getElementById("photoContainer");
-      const spinner = document.getElementById("loadingSpinner");
-      container.innerHTML = "";
-      spinner.style.display = "block";
+  <!-- 相片牆 -->
+  <div id="photoContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+</main>
 
-      const snapshot = await photosRef.orderBy("timestamp", "desc").get();
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyDFh075x68NVbXfkvlPv4wa3uNi-rilcEk",
+    authDomain: "tokyo-14278.firebaseapp.com",
+    projectId: "tokyo-14278"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  const photosRef = db.collection("photos");
 
-      spinner.style.display = "none";
+  const deletePassword = "123"; // 自定義刪除密碼
 
-      snapshot.forEach(doc => {
-        const { url } = doc.data();
-        const photoBox = document.createElement("div");
-        photoBox.className = "relative group";
+  document.getElementById("sortSelect").addEventListener("change", loadPhotos);
 
-        photoBox.innerHTML = `
-          <img src="${url}" alt="photo" class="rounded shadow-md w-full object-cover">
-          <div class="absolute top-2 right-2 hidden group-hover:flex flex-col bg-white shadow rounded z-10">
-            <button class="deleteBtn text-red-500 px-2 py-1 hover:bg-gray-100 text-sm">刪除</button>
-            <a href="${url}" download class="text-blue-500 px-2 py-1 hover:bg-gray-100 text-sm text-center">下載</a>
-          </div>
-        `;
+  async function loadPhotos() {
+    const container = document.getElementById("photoContainer");
+    const loading = document.getElementById("loading");
+    container.innerHTML = "";
+    loading.classList.remove("hidden");
 
-        photoBox.querySelector(".deleteBtn").addEventListener("click", () => {
-          const input = prompt("請輸入刪除密碼");
-          if (input !== deletePassword) {
-            alert("密碼錯誤，無法刪除！");
-            return;
-          }
-          if (confirm("確定要刪除這張圖片嗎？")) {
-            photosRef.doc(doc.id).delete().then(loadPhotos);
-          }
-        });
+    const sort = document.getElementById("sortSelect").value;
+    let query = photosRef;
 
-        container.appendChild(photoBox);
+    if (sort === "newest") query = query.orderBy("timestamp", "desc");
+    else if (sort === "oldest") query = query.orderBy("timestamp", "asc");
+    else if (sort === "likes") query = query.orderBy("like", "desc");
+
+    const snapshot = await query.get();
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const url = data.url;
+      const like = data.like || 0;
+
+      const box = document.createElement("div");
+      box.className = "relative group border rounded overflow-hidden shadow bg-white";
+
+      box.innerHTML = `
+        <img src="${url}" class="w-full h-64 object-cover"/>
+        <div class="absolute top-2 right-2 flex space-x-2 opacity-0 group-hover:opacity-100 transition">
+          <button class="likeBtn bg-white rounded px-2 py-1 text-sm shadow">❤️ ${like}</button>
+          <button class="deleteBtn bg-white rounded px-2 py-1 text-sm shadow">🗑️</button>
+          <a href="${url}" download class="bg-white rounded px-2 py-1 text-sm shadow">⬇️</a>
+        </div>
+      `;
+
+      box.querySelector(".likeBtn").addEventListener("click", async () => {
+        await photosRef.doc(doc.id).update({ like: like + 1 });
+        loadPhotos();
+      });
+
+      box.querySelector(".deleteBtn").addEventListener("click", () => {
+        const input = prompt("請輸入刪除密碼");
+        if (input !== deletePassword) return alert("密碼錯誤！");
+        if (confirm("確定刪除這張圖片嗎？")) {
+          photosRef.doc(doc.id).delete().then(loadPhotos);
+        }
+      });
+
+      container.appendChild(box);
+    });
+
+    loading.classList.add("hidden");
+  }
+
+  async function handleUpload() {
+    const files = document.getElementById("uploadInput").files;
+    if (!files.length) return alert("請選擇圖片");
+
+    for (const file of files) {
+      const options = { maxSizeMB: 1, maxWidthOrHeight: 1280, useWebWorker: true };
+      const compressed = await imageCompression(file, options);
+
+      const formData = new FormData();
+      formData.append("file", compressed);
+      formData.append("upload_preset", "tokyo_album");
+
+      const res = await fetch("https://api.cloudinary.com/v1_1/dd2lnjt52/image/upload", {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await res.json();
+      await photosRef.add({
+        url: data.secure_url,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        like: 0
       });
     }
 
-    async function handleUpload() {
-      const files = document.getElementById("uploadInput").files;
-      if (!files.length) return alert("請選擇圖片");
-
-      const progressBar = document.getElementById("uploadProgress");
-      progressBar.classList.remove("hidden");
-
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-
-        const options = {
-          maxSizeMB: 1,
-          maxWidthOrHeight: 1280,
-          useWebWorker: true
-        };
-        const compressed = await imageCompression(file, options);
-
-        const formData = new FormData();
-        formData.append("file", compressed);
-        formData.append("upload_preset", "tokyo_album");
-
-        progressBar.value = Math.round((i / files.length) * 100);
-
-        const res = await fetch("https://api.cloudinary.com/v1_1/dd2lnjt52/image/upload", {
-          method: "POST",
-          body: formData
-        });
-
-        const data = await res.json();
-        await photosRef.add({
-          url: data.secure_url,
-          timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-      }
-
-      progressBar.classList.add("hidden");
-      progressBar.value = 0;
-      loadPhotos();
-      document.getElementById("uploadInput").value = "";
-    }
-
+    document.getElementById("uploadInput").value = "";
     loadPhotos();
-  </script>
+  }
+
+  loadPhotos();
+</script>
 </body>
 </html>
