@@ -1,47 +1,49 @@
-<!-- trigger redeploy -->
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>東京相簿</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <title>Tokyo 相簿</title>
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.1/dist/browser-image-compression.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #3b82f6;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 40px auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
-  <!-- 🎨 幾何圖案背景 -->
-<div style="
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background:
-    radial-gradient(circle at 20% 30%, rgba(173, 216, 230, 0.2) 0%, transparent 60%),
-    radial-gradient(circle at 80% 70%, rgba(144, 238, 144, 0.2) 0%, transparent 60%),
-    linear-gradient(135deg, #ffffff, #f0f8ff);
-  background-repeat: no-repeat;
-  background-size: cover;
-"></div>
+<body class="bg-white text-gray-800 min-h-screen">
 
+  <div class="max-w-4xl mx-auto px-4 py-6">
+    <h1 class="text-3xl font-bold mb-4 text-center">📷 Tokyo 相簿</h1>
 
-  <!-- 主容器 -->
-  <main class="max-w-5xl mx-auto px-4 py-8">
-
-    <!-- 標題 -->
-    <h1 class="text-3xl font-bold text-center mb-6 text-blue-700">📸 東京旅行相簿</h1>
-
-    <!-- 上傳區塊 -->
-    <section class="bg-white p-6 rounded-lg shadow mb-8 text-center">
-      <input type="file" id="uploadInput" multiple accept="image/*" class="block mx-auto mb-4" />
-      <button onclick="handleUpload()" class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
-        上傳圖片
+    <!-- 上傳欄位 -->
+    <div class="flex flex-col items-center gap-4 mb-6">
+      <input type="file" id="uploadInput" multiple accept="image/*" class="block text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+      <button onclick="handleUpload()" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-4 py-2 rounded">
+        上傳照片
       </button>
-    </section>
+      <progress id="uploadProgress" value="0" max="100" class="w-1/2 h-2 hidden"></progress>
+    </div>
 
-    <!-- 圖片顯示區 -->
-    <div id="photoContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6"></div>
-  </main>
+    <!-- 旋轉圈 -->
+    <div id="loadingSpinner" class="spinner"></div>
+
+    <!-- 相簿照片 -->
+    <div id="photoContainer" class="grid grid-cols-2 md:grid-cols-3 gap-4"></div>
+  </div>
 
   <script>
     const firebaseConfig = {
@@ -49,32 +51,32 @@
       authDomain: "tokyo-14278.firebaseapp.com",
       projectId: "tokyo-14278",
     };
-
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const photosRef = db.collection("photos");
-    const deletePassword = "Aa123321@@";
+
+    const deletePassword = "3344"; // ⛔ 替換成你自己的密碼
 
     async function loadPhotos() {
       const container = document.getElementById("photoContainer");
+      const spinner = document.getElementById("loadingSpinner");
       container.innerHTML = "";
+      spinner.style.display = "block";
+
       const snapshot = await photosRef.orderBy("timestamp", "desc").get();
 
+      spinner.style.display = "none";
+
       snapshot.forEach(doc => {
-        const data = doc.data();
+        const { url } = doc.data();
         const photoBox = document.createElement("div");
-        photoBox.className = "relative group rounded-lg overflow-hidden shadow hover:shadow-lg transition";
+        photoBox.className = "relative group";
 
         photoBox.innerHTML = `
-          <img src="${data.url}" alt="photo" class="w-full h-64 object-cover" />
-          <div class="absolute top-2 right-2">
-            <button class="text-white bg-black bg-opacity-40 p-1 rounded-full hover:bg-opacity-70 focus:outline-none">
-              ⋮
-            </button>
-            <div class="hidden group-hover:block absolute right-0 mt-2 bg-white shadow-md rounded z-10">
-              <button class="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full text-left deleteBtn">🗑 刪除</button>
-              <a href="${data.url}" download class="block px-4 py-2 text-sm hover:bg-gray-100">⬇️ 下載</a>
-            </div>
+          <img src="${url}" alt="photo" class="rounded shadow-md w-full object-cover">
+          <div class="absolute top-2 right-2 hidden group-hover:flex flex-col bg-white shadow rounded z-10">
+            <button class="deleteBtn text-red-500 px-2 py-1 hover:bg-gray-100 text-sm">刪除</button>
+            <a href="${url}" download class="text-blue-500 px-2 py-1 hover:bg-gray-100 text-sm text-center">下載</a>
           </div>
         `;
 
@@ -97,7 +99,12 @@
       const files = document.getElementById("uploadInput").files;
       if (!files.length) return alert("請選擇圖片");
 
-      for (const file of files) {
+      const progressBar = document.getElementById("uploadProgress");
+      progressBar.classList.remove("hidden");
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+
         const options = {
           maxSizeMB: 1,
           maxWidthOrHeight: 1280,
@@ -108,6 +115,8 @@
         const formData = new FormData();
         formData.append("file", compressed);
         formData.append("upload_preset", "tokyo_album");
+
+        progressBar.value = Math.round((i / files.length) * 100);
 
         const res = await fetch("https://api.cloudinary.com/v1_1/dd2lnjt52/image/upload", {
           method: "POST",
@@ -121,6 +130,8 @@
         });
       }
 
+      progressBar.classList.add("hidden");
+      progressBar.value = 0;
       loadPhotos();
       document.getElementById("uploadInput").value = "";
     }
