@@ -3,121 +3,65 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>東京相簿</title>
+  <title>旅行相簿</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/browser-image-compression/1.0.16/browser-image-compression.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
 </head>
-<body class="bg-gray-50 text-gray-800">
+<body class="bg-gray-100">
 
-<!-- 導覽列 -->
-<nav class="bg-white border-b shadow fixed top-0 left-0 w-full z-50">
-  <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-    <h1 class="text-xl font-bold text-blue-600">東京相簿</h1>
-    <ul class="flex space-x-4 text-sm font-medium">
-      <li><a href="index.html" class="hover:text-blue-600">首頁</a></li>
-      <li><a href="album.html" class="text-blue-600">相簿</a></li>
-    </ul>
-  </div>
-</nav>
+<!-- Navbar -->
+<nav class="bg-white shadow p-4 fixed top-0 left-0 w-full z-50 flex justify-between items-center">
+  <h1 class="text-xl font-bold text-blue-600">東京相簿</h1>
+  <div class="flex items-center space-x-4">
+    <input id="uploadInput" type="file" accept="image/*" multiple class="hidden">
+    <button onclick="document.getElementById('uploadInput').click()" class="bg-blue-500 text-white px-3 py-1 rounded">上傳照片</button>
 
-<main class="pt-24 max-w-5xl mx-auto px-4">
-  <!-- 上傳 -->
-  <div class="flex items-center justify-between mb-4">
-    <input type="file" id="uploadInput" multiple class="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:border file:rounded file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
-    <button onclick="handleUpload()" class="ml-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">上傳</button>
-  </div>
-
-  <!-- 排序選單 -->
-  <div class="flex justify-end mb-4">
-    <label for="sortSelect" class="mr-2 text-gray-700">排序方式：</label>
     <select id="sortSelect" class="border rounded px-2 py-1 text-sm">
       <option value="newest">由新到舊</option>
       <option value="oldest">由舊到新</option>
       <option value="likes">喜愛程度</option>
     </select>
   </div>
+</nav>
 
-  <!-- loading 圈 -->
-  <div id="loading" class="flex justify-center items-center py-12 hidden">
-    <svg class="animate-spin h-8 w-8 text-blue-600" viewBox="0 0 24 24">
-      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" />
-      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-    </svg>
+<!-- Main content -->
+<main class="pt-24 max-w-5xl mx-auto px-4">
+  <div id="progressText" class="text-center my-2 text-sm text-gray-600 hidden">上傳中...</div>
+  <div id="spinner" class="flex justify-center my-4 hidden">
+    <div class="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
   </div>
-
-  <!-- 相片牆 -->
-  <div id="photoContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+  <div id="photoContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6"></div>
 </main>
 
 <script>
+  // Firebase init
   const firebaseConfig = {
-    apiKey: "AIzaSyDFh075x68NVbXfkvlPv4wa3uNi-rilcEk",
-    authDomain: "tokyo-14278.firebaseapp.com",
-    projectId: "tokyo-14278"
+    // 請填入你的 Firebase 設定
+    apiKey: "...",
+    authDomain: "...",
+    projectId: "tokyo",
   };
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
   const photosRef = db.collection("photos");
 
-  const deletePassword = "123"; // 自定義刪除密碼
+  const deletePassword = "1234"; // 🔒 自定刪除密碼
+  let currentSort = "newest";
 
-  document.getElementById("sortSelect").addEventListener("change", loadPhotos);
+  document.getElementById("sortSelect").addEventListener("change", (e) => {
+    currentSort = e.target.value;
+    loadPhotos();
+  });
 
-  async function loadPhotos() {
-    const container = document.getElementById("photoContainer");
-    const loading = document.getElementById("loading");
-    container.innerHTML = "";
-    loading.classList.remove("hidden");
-
-    const sort = document.getElementById("sortSelect").value;
-    let query = photosRef;
-
-    if (sort === "newest") query = query.orderBy("timestamp", "desc");
-    else if (sort === "oldest") query = query.orderBy("timestamp", "asc");
-    else if (sort === "likes") query = query.orderBy("like", "desc");
-
-    const snapshot = await query.get();
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      const url = data.url;
-      const like = data.like || 0;
-
-      const box = document.createElement("div");
-      box.className = "relative group border rounded overflow-hidden shadow bg-white";
-
-      box.innerHTML = `
-        <img src="${url}" class="w-full h-64 object-cover"/>
-        <div class="absolute top-2 right-2 flex space-x-2 opacity-0 group-hover:opacity-100 transition">
-          <button class="likeBtn bg-white rounded px-2 py-1 text-sm shadow">❤️ ${like}</button>
-          <button class="deleteBtn bg-white rounded px-2 py-1 text-sm shadow">🗑️</button>
-          <a href="${url}" download class="bg-white rounded px-2 py-1 text-sm shadow">⬇️</a>
-        </div>
-      `;
-
-      box.querySelector(".likeBtn").addEventListener("click", async () => {
-        await photosRef.doc(doc.id).update({ like: like + 1 });
-        loadPhotos();
-      });
-
-      box.querySelector(".deleteBtn").addEventListener("click", () => {
-        const input = prompt("請輸入刪除密碼");
-        if (input !== deletePassword) return alert("密碼錯誤！");
-        if (confirm("確定刪除這張圖片嗎？")) {
-          photosRef.doc(doc.id).delete().then(loadPhotos);
-        }
-      });
-
-      container.appendChild(box);
-    });
-
-    loading.classList.add("hidden");
-  }
-
+  // ⬆️ 上傳圖片（支援多張）
   async function handleUpload() {
     const files = document.getElementById("uploadInput").files;
     if (!files.length) return alert("請選擇圖片");
+
+    document.getElementById("progressText").classList.remove("hidden");
+    document.getElementById("spinner").classList.remove("hidden");
 
     for (const file of files) {
       const options = { maxSizeMB: 1, maxWidthOrHeight: 1280, useWebWorker: true };
@@ -131,8 +75,8 @@
         method: "POST",
         body: formData
       });
-
       const data = await res.json();
+
       await photosRef.add({
         url: data.secure_url,
         timestamp: firebase.firestore.FieldValue.serverTimestamp(),
@@ -140,10 +84,89 @@
       });
     }
 
+    document.getElementById("progressText").classList.add("hidden");
+    document.getElementById("spinner").classList.add("hidden");
     document.getElementById("uploadInput").value = "";
     loadPhotos();
   }
 
+  // 📷 載入圖片
+  async function loadPhotos() {
+    const container = document.getElementById("photoContainer");
+    container.innerHTML = "";
+
+    let query = photosRef;
+    if (currentSort === "newest") {
+      query = query.orderBy("timestamp", "desc");
+    } else if (currentSort === "oldest") {
+      query = query.orderBy("timestamp", "asc");
+    } else if (currentSort === "likes") {
+      query = query.orderBy("like", "desc");
+    }
+
+    const snapshot = await query.get();
+    snapshot.forEach((doc) => {
+      const { url, like = 0, timestamp } = doc.data();
+      const photoBox = document.createElement("div");
+      photoBox.className = "relative bg-white rounded shadow";
+
+      photoBox.innerHTML = `
+        <img src="${url}" alt="photo" class="w-full h-64 object-cover rounded-t">
+        <div class="absolute top-2 right-2 flex space-x-1">
+          <button class="menuBtn bg-white rounded px-2 py-1 text-sm shadow">⋮</button>
+          <div class="menu hidden flex-col bg-white rounded shadow text-sm absolute top-8 right-0 z-10">
+            <button class="deleteBtn px-3 py-2 hover:bg-gray-100">🗑️ 刪除</button>
+            <button class="downloadBtn px-3 py-2 hover:bg-gray-100">⬇️ 下載</button>
+          </div>
+        </div>
+        <div class="flex justify-between items-center px-4 py-2">
+          <button class="likeBtn text-xl">${like} ❤️</button>
+        </div>
+      `;
+
+      // ❤️ 喜歡
+      photoBox.querySelector(".likeBtn").addEventListener("click", () => {
+        photosRef.doc(doc.id).update({ like: firebase.firestore.FieldValue.increment(1) });
+        loadPhotos();
+      });
+
+      // 🗑️ 刪除
+      photoBox.querySelector(".deleteBtn").addEventListener("click", () => {
+        const input = prompt("請輸入刪除密碼");
+        if (input !== deletePassword) {
+          alert("密碼錯誤，無法刪除！");
+          return;
+        }
+        if (confirm("確定要刪除這張圖片嗎？")) {
+          photosRef.doc(doc.id).delete().then(loadPhotos);
+        }
+      });
+
+      // ⬇️ 下載（自定義檔名）
+      photoBox.querySelector(".downloadBtn").addEventListener("click", () => {
+        const filename = `tokyo_${doc.id}.jpg`;
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      });
+
+      // ⋮ 控制選單
+      const menuBtn = photoBox.querySelector(".menuBtn");
+      const menu = photoBox.querySelector(".menu");
+      menuBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menu.classList.toggle("hidden");
+      });
+      document.addEventListener("click", () => menu.classList.add("hidden"));
+
+      container.appendChild(photoBox);
+    });
+  }
+
+  document.getElementById("uploadInput").addEventListener("change", handleUpload);
   loadPhotos();
 </script>
 </body>
