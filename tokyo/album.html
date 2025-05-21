@@ -146,10 +146,11 @@
         formData.append("file", uploadFile);
         formData.append("upload_preset", "tokyo_album");
 
-        const res = await fetch("https://api.cloudinary.com/v1_1/dd2lnjt52/${isImage ? 'image' : 'video'}/upload", {
-          method: "POST",
-          body: formData,
+        const res = await fetch(`https://api.cloudinary.com/v1_1/dd2lnjt52/${isImage ? 'image' : 'video'}/upload`, {
+        method: "POST",
+        body: formData,
         });
+
 
         const data = await res.json();
         await photosRef.add({
