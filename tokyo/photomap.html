@@ -2,26 +2,25 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>照片地圖</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>相簿地圖</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    #map { height: 90vh; }
-    .leaflet-popup-content img { max-width: 150px; height: auto; }
+    #map { height: 100vh; }
+    .leaflet-popup-content img, .leaflet-popup-content video {
+      max-width: 200px;
+      border-radius: 8px;
+    }
   </style>
 </head>
-<body class="bg-white text-gray-800">
-  <div class="px-4 pt-24 max-w-6xl mx-auto">
-    <h1 class="text-3xl font-bold text-center text-blue-600 mb-4">📍照片地圖</h1>
-    <div id="map" class="rounded shadow"></div>
-  </div>
+<body>
+  <div id="map"></div>
 
   <script>
-    // Firebase 設定
     const firebaseConfig = {
       apiKey: "AIzaSyDFh075x68NVbXfkvlPv4wa3uNi-rilcEk",
       authDomain: "tokyo-14278.firebaseapp.com",
@@ -29,31 +28,31 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-    const photosRef = db.collection("photos");
 
-    // Leaflet 初始化
-    const map = L.map('map').setView([35.682839, 139.759455], 11); // 東京中心點
+    const map = L.map('map').setView([35.6895, 139.6917], 12); // 預設東京
+
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap 貢獻者'
     }).addTo(map);
 
-    // 載入有定位資訊的照片
-    async function loadPhotoMarkers() {
-      const snapshot = await photosRef.where("location", "!=", null).get();
+    db.collection("photos").get().then(snapshot => {
       snapshot.forEach(doc => {
         const data = doc.data();
-        if (!data.location || !data.url) return;
+        if (!data.location || !data.location.lat || !data.location.lng) return;
 
-        const marker = L.marker([data.location.lat, data.location.lng]).addTo(map);
-        marker.bindPopup(`
-          <div>
-            <img src="${data.url}" alt="photo" />
-          </div>
-        `);
+        const lat = data.location.lat;
+        const lng = data.location.lng;
+        const url = data.url;
+        const type = data.type;
+
+        const content = type === "image"
+          ? `<img src="${url}" alt="photo"/>`
+          : `<video controls src="${url}"></video>`;
+
+        L.marker([lat, lng]).addTo(map)
+          .bindPopup(content);
       });
-    }
-
-    loadPhotoMarkers();
+    });
   </script>
 </body>
 </html>
