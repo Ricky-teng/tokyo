@@ -10,18 +10,22 @@
   <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.1/dist/browser-image-compression.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
-  <div class="max-w-5xl mx-auto px-4 pt-24">
+  <div class="max-w-5xl mx-auto px-4 pt-24 pb-16">
     <h1 class="text-3xl font-bold text-center text-blue-600 mb-6">旅行相簿</h1>
 
-    <!-- 上傳欄 -->
-    <div class="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+    <!-- 控制列 -->
+    <div class="flex flex-col sm:flex-row sm:items-center gap-2 mb-4 justify-between">
       <input id="uploadInput" type="file" multiple accept="image/*,video/*" class="border p-2 rounded bg-white shadow" />
       <button onclick="handleUpload()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">上傳</button>
-
       <select id="sortSelect" onchange="loadPhotos()" class="border p-2 rounded bg-white shadow">
         <option value="newest">由新到舊</option>
         <option value="oldest">由舊到新</option>
         <option value="likes">喜愛程度</option>
+      </select>
+      <select id="filterSelect" onchange="loadPhotos()" class="border p-2 rounded bg-white shadow">
+        <option value="all">全部</option>
+        <option value="image">只看圖片</option>
+        <option value="video">只看影片</option>
       </select>
     </div>
 
@@ -30,7 +34,7 @@
       <div id="progressFill" class="bg-blue-600 h-2 rounded" style="width: 0%"></div>
     </div>
 
-    <!-- Loading -->
+    <!-- 載入中 -->
     <div id="loading" class="text-center hidden">
       <div class="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto"></div>
       <p class="text-gray-500 mt-2">載入中...</p>
@@ -38,10 +42,14 @@
 
     <!-- 照片/影片列表 -->
     <div id="photoContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+
+    <!-- 地圖按鈕 -->
+    <a href="photomap.html" class="fixed bottom-6 right-6 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-full shadow-lg transition z-50">
+      🗺️ 查看地圖
+    </a>
   </div>
 
   <script>
-    // Firebase 設定
     const firebaseConfig = {
       apiKey: "AIzaSyDFh075x68NVbXfkvlPv4wa3uNi-rilcEk",
       authDomain: "tokyo-14278.firebaseapp.com",
@@ -51,7 +59,71 @@
     const db = firebase.firestore();
     const photosRef = db.collection("photos");
 
-    const deletePassword = "Aa123321@@"; // 🔒 刪除密碼
+    const deletePassword = "Aa123231@@";
+
+    async function handleUpload() {
+      const files = document.getElementById("uploadInput").files;
+      if (!files.length) return alert("請選擇檔案");
+
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+
+        for (const file of files) {
+          const isImage = file.type.startsWith("image/");
+          const isVideo = file.type.startsWith("video/");
+          if (!isImage && !isVideo) {
+            alert("只允許上傳圖片或影片");
+            continue;
+          }
+
+          document.getElementById("progressBar").classList.remove("hidden");
+
+          let uploadFile = file;
+          if (isImage) {
+            uploadFile = await imageCompression(file, {
+              maxSizeMB: 1,
+              maxWidthOrHeight: 1280,
+              useWebWorker: true,
+            });
+          }
+
+          const formData = new FormData();
+          formData.append("file", uploadFile);
+          formData.append("upload_preset", "tokyo_album");
+
+          const uploadUrl = isImage
+            ? "https://api.cloudinary.com/v1_1/dd2lnjt52/image/upload"
+            : "https://api.cloudinary.com/v1_1/dd2lnjt52/video/upload";
+
+          const res = await fetch(uploadUrl, {
+            method: "POST",
+            body: formData,
+          });
+
+          const data = await res.json();
+          await photosRef.add({
+            url: data.secure_url,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            like: 0,
+            type: isImage ? "image" : "video",
+            location: { lat, lng }
+          });
+
+          document.getElementById("progressFill").style.width = "100%";
+        }
+
+        setTimeout(() => {
+          document.getElementById("progressBar").classList.add("hidden");
+          document.getElementById("progressFill").style.width = "0%";
+        }, 1000);
+
+        loadPhotos();
+        document.getElementById("uploadInput").value = "";
+      }, () => {
+        alert("無法取得定位，請允許瀏覽器權限。");
+      });
+    }
 
     async function loadPhotos() {
       const container = document.getElementById("photoContainer");
@@ -59,6 +131,8 @@
       document.getElementById("loading").classList.remove("hidden");
 
       const sort = document.getElementById("sortSelect").value;
+      const filter = document.getElementById("filterSelect").value;
+
       let query = photosRef;
       if (sort === "newest") query = query.orderBy("timestamp", "desc");
       else if (sort === "oldest") query = query.orderBy("timestamp", "asc");
@@ -67,22 +141,17 @@
       const snapshot = await query.get();
       snapshot.forEach(doc => {
         const data = doc.data();
-        const isVideo = data.url.includes(".mp4") || data.url.includes("video");
+        if (filter !== "all" && data.type !== filter) return;
 
         const box = document.createElement("div");
         box.className = "relative bg-white p-2 rounded shadow group";
 
+        const media = data.type === "video"
+          ? `<video controls class="w-full rounded"><source src="${data.url}" type="video/mp4"></video>`
+          : `<img src="${data.url}" alt="media" class="w-full object-cover rounded" />`;
+
         box.innerHTML = `
-          <div class="overflow-hidden rounded">
-            ${isVideo ? `
-              <video controls class="w-full rounded">
-                <source src="${data.url}" type="video/mp4">
-                你的瀏覽器不支援影片播放
-              </video>
-            ` : `
-              <img src="${data.url}" alt="上傳內容" class="w-full object-cover rounded" />
-            `}
-          </div>
+          <div class="overflow-hidden rounded">${media}</div>
           <div class="flex justify-between items-center mt-2 text-sm text-gray-600">
             <button onclick="likePhoto('${doc.id}', ${data.like || 0})" class="hover:text-red-600">❤️ ${data.like || 0}</button>
             <div class="relative">
@@ -119,63 +188,11 @@
       }
     }
 
-    async function handleUpload() {
-      const files = document.getElementById("uploadInput").files;
-      if (!files.length) return alert("請選擇檔案");
-
-      for (const file of files) {
-        const isImage = file.type.startsWith("image/");
-        const isVideo = file.type.startsWith("video/");
-        if (!isImage && !isVideo) {
-          alert("只允許上傳圖片或影片");
-          continue;
-        }
-
-        document.getElementById("progressBar").classList.remove("hidden");
-
-        let uploadFile = file;
-        if (isImage) {
-          uploadFile = await imageCompression(file, {
-            maxSizeMB: 1,
-            maxWidthOrHeight: 1280,
-            useWebWorker: true,
-          });
-        }
-
-        const formData = new FormData();
-        formData.append("file", uploadFile);
-        formData.append("upload_preset", "tokyo_album");
-
-        const res = await fetch(`https://api.cloudinary.com/v1_1/dd2lnjt52/${isImage ? 'image' : 'video'}/upload`, {
-        method: "POST",
-        body: formData,
-        });
-
-
-        const data = await res.json();
-        await photosRef.add({
-          url: data.secure_url,
-          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-          like: 0
-        });
-
-        document.getElementById("progressFill").style.width = "100%";
-      }
-
-      setTimeout(() => {
-        document.getElementById("progressBar").classList.add("hidden");
-        document.getElementById("progressFill").style.width = "0%";
-      }, 1000);
-
-      loadPhotos();
-      document.getElementById("uploadInput").value = "";
-    }
-
     function downloadMedia(url) {
-      const link = document.createElement("a");
-      link.href = url;
       const filename = prompt("請輸入檔名", "tokyo-media");
       if (!filename) return;
+      const link = document.createElement("a");
+      link.href = url;
       link.download = filename;
       link.click();
     }
