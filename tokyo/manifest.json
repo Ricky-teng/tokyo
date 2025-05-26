@@ -1,18 +1,21 @@
 {
   "name": "東京旅行相簿",
   "short_name": "相簿",
-  "start_url": "album.html",
+  "description": "東京旅行的照片與地圖紀錄",
+  "start_url": "/",
+  "id": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#ffffff",
   "theme_color": "#3b82f6",
   "icons": [
     {
-      "src": "/camera-icon.png",
+      "src": "camera-icon.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/camera-icon.png",
+      "src": "camera-icon.png",
       "sizes": "512x512",
       "type": "image/png"
     }
