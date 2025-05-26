@@ -200,10 +200,10 @@
 
     loadPhotos();
     
-    if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/service-worker.js')
-    .then(() => console.log('✅ Service Worker 註冊成功'))
-    .catch(err => console.error('❌ Service Worker 註冊失敗', err));
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
+    .then(() => console.log('✅ Service Worker registered'))
+    .catch(error => console.error('❌ Service Worker registration failed:', error));
 }
   </script>
 </body>
