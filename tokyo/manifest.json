@@ -2,12 +2,12 @@
   "name": "東京旅行相簿",
   "short_name": "相簿",
   "description": "東京旅行的照片",
-  "start_url": "/",
-  "id": "/",
+  "start_url": "/index.html",
+  "id": "/index.html",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#ffffff",
-  "theme_color": "#3b82f6",
+  "theme_color": "#3b82f6",s
   "icons": [
     {
       "src": "camera-icon.png",
