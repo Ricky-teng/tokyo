@@ -2,13 +2,13 @@
 <html lang="zh-Hant">
 <head>
   <nav class="bg-blue-500 text-white p-4 flex justify-between items-center">
-  <div class="text-lg font-bold">東京旅行相簿</div>
-  <div class="space-x-4">
-    <a href="/index.html" class="hover:underline">首頁</a>
-    <a href="/album.html" class="hover:underline">相簿</a>
-    <a href="/photomap.html" class="hover:underline">地圖</a>
-  </div>
-</nav>
+    <div class="text-lg font-bold">東京旅行相簿</div>
+    <div class="space-x-4">
+      <a href="/index.html" class="hover:underline">首頁</a>
+      <a href="/album.html" class="hover:underline">相簿</a>
+      <a href="/photomap.html" class="hover:underline">地圖</a>
+    </div>
+  </nav>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>相簿</title>
@@ -17,8 +17,11 @@
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.1/dist/browser-image-compression.js"></script>
   <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
+
   <div class="max-w-5xl mx-auto px-4 pt-24 pb-16">
     <h1 class="text-3xl font-bold text-center text-blue-600 mb-6">旅行相簿</h1>
 
@@ -26,6 +29,7 @@
     <div class="flex flex-col sm:flex-row sm:items-center gap-2 mb-4 justify-between">
       <input id="uploadInput" type="file" multiple accept="image/*,video/*" class="border p-2 rounded bg-white shadow" />
       <button onclick="handleUpload()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">上傳</button>
+      <button onclick="openMapModal()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">📍選擇位置</button>
       <select id="sortSelect" onchange="loadPhotos()" class="border p-2 rounded bg-white shadow">
         <option value="newest">由新到舊</option>
         <option value="oldest">由舊到新</option>
@@ -36,6 +40,18 @@
         <option value="image">只看圖片</option>
         <option value="video">只看影片</option>
       </select>
+    </div>
+
+    <!-- 地圖選點 Modal -->
+    <div id="mapModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 hidden">
+      <div class="bg-white rounded-lg shadow-lg p-4 w-full max-w-md">
+        <h2 class="text-lg font-bold mb-2">請點選上傳位置</h2>
+        <div id="map" class="h-64 rounded mb-4"></div>
+        <div class="flex justify-end gap-2">
+          <button onclick="confirmLocation()" class="bg-blue-600 text-white px-4 py-2 rounded">確認位置</button>
+          <button onclick="closeMapModal()" class="bg-gray-400 text-white px-4 py-2 rounded">取消</button>
+        </div>
+      </div>
     </div>
 
     <!-- 上傳進度條 -->
@@ -49,7 +65,7 @@
       <p class="text-gray-500 mt-2">載入中...</p>
     </div>
 
-    <!-- 照片/影片列表 -->
+    <!-- 相片/影片容器 -->
     <div id="photoContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
 
     <!-- 地圖按鈕 -->
@@ -70,13 +86,51 @@
 
     const deletePassword = "Aa123321@@";
 
+    let selectedLatLng = null;
+    let mapInstance, marker;
+
+    function openMapModal() {
+      document.getElementById("mapModal").classList.remove("hidden");
+      setTimeout(() => {
+        if (!mapInstance) {
+          mapInstance = L.map("map").setView([35.6895, 139.6917], 12); // 東京
+          L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution: '&copy; OpenStreetMap 貢獻者'
+          }).addTo(mapInstance);
+          mapInstance.on("click", function (e) {
+            selectedLatLng = e.latlng;
+            if (marker) marker.setLatLng(e.latlng);
+            else marker = L.marker(e.latlng).addTo(mapInstance);
+          });
+        } else {
+          mapInstance.invalidateSize();
+        }
+      }, 100);
+    }
+
+    function closeMapModal() {
+      document.getElementById("mapModal").classList.add("hidden");
+    }
+
+    function confirmLocation() {
+      if (!selectedLatLng) return alert("請點選地圖上的位置");
+      closeMapModal();
+    }
+
     async function handleUpload() {
       const files = document.getElementById("uploadInput").files;
       if (!files.length) return alert("請選擇檔案");
 
-      navigator.geolocation.getCurrentPosition(async (pos) => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
+      const getLocation = () => new Promise((resolve, reject) => {
+        if (selectedLatLng) return resolve(selectedLatLng);
+        navigator.geolocation.getCurrentPosition(
+          pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+          () => reject("無法取得定位")
+        );
+      });
+
+      try {
+        const location = await getLocation();
 
         for (const file of files) {
           const isImage = file.type.startsWith("image/");
@@ -116,7 +170,7 @@
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
             like: 0,
             type: isImage ? "image" : "video",
-            location: { lat, lng }
+            location: { lat: location.lat, lng: location.lng }
           });
 
           document.getElementById("progressFill").style.width = "100%";
@@ -129,9 +183,11 @@
 
         loadPhotos();
         document.getElementById("uploadInput").value = "";
-      }, () => {
-        alert("無法取得定位，請允許瀏覽器權限。");
-      });
+        selectedLatLng = null; // 清除已選位置
+
+      } catch (err) {
+        alert(typeof err === "string" ? err : "無法取得定位，請允許瀏覽器權限。");
+      }
     }
 
     async function loadPhotos() {
@@ -207,12 +263,12 @@
     }
 
     loadPhotos();
-    
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
-    .then(() => console.log('✅ Service Worker registered'))
-    .catch(error => console.error('❌ Service Worker registration failed:', error));
-}
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
+        .then(() => console.log('✅ Service Worker registered'))
+        .catch(error => console.error('❌ Service Worker registration failed:', error));
+    }
   </script>
 </body>
 </html>
