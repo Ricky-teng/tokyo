@@ -264,6 +264,16 @@
 
     loadPhotos();
 
+    function openModal(url) {
+  document.getElementById("modalImage").src = url;
+  document.getElementById("imageModal").classList.remove("hidden");
+}
+
+function closeModal() {
+  document.getElementById("imageModal").classList.add("hidden");
+}
+
+
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
         .then(() => console.log('✅ Service Worker registered'))
