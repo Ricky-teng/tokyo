@@ -1,14 +1,20 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <nav class="bg-blue-500 text-white p-4 flex justify-between items-center">
-    <div class="text-lg font-bold">東京旅行相簿</div>
-    <div class="space-x-4">
-      <a href="/index.html" class="hover:underline">首頁</a>
-      <a href="/album.html" class="hover:underline">相簿</a>
-      <a href="/photomap.html" class="hover:underline">地圖</a>
-    </div>
-  </nav>
+ <nav class="fixed top-0 left-0 w-full bg-white border-b z-50">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+    <h1 class="text-xl font-bold text-blue-600">東京9日旅行相簿</h1>
+    <ul class="flex space-x-4 text-sm font-medium">
+      <li><a target="_self" href="index.html" class="hover:text-blue-600">首頁</a></li>
+      <li><a target="_self" href="plan.html" class="text-blue-600">每日行程</a></li>
+      <li><a target="_self" href="map.html" class="hover:text-blue-600">地圖總覽</a></li>
+      <li><a target="_self" href="album.html" class="hover:text-blue-600">相簿</a></li>
+      <li><a target="_self" href="about.html" class="hover:text-blue-600">關於我們</a></li>
+       <button id="loginBtn" class="hover:underline">登入</button>
+  <button id="logoutBtn" class="hover:underline hidden">登出</button>
+    </ul>
+  </div>
+</nav>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>相簿</title>
@@ -16,6 +22,8 @@
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.1/dist/browser-image-compression.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
@@ -166,12 +174,14 @@
 
           const data = await res.json();
           await photosRef.add({
-            url: data.secure_url,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-            like: 0,
-            type: isImage ? "image" : "video",
-            location: { lat: location.lat, lng: location.lng }
+          url: data.secure_url,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+          like: 0,
+          type: isImage ? "image" : "video",
+          location: { lat, lng },
+          uploader: currentUser ? (currentUser.displayName || currentUser.email) : "匿名"
           });
+    
 
           document.getElementById("progressFill").style.width = "100%";
         }
@@ -216,18 +226,20 @@
   : `<img src="${data.url}" alt="media" class="w-full object-cover rounded cursor-pointer" onclick="openModal('${data.url}')" />`;
 
         box.innerHTML = `
-          <div class="overflow-hidden rounded">${media}</div>
-          <div class="flex justify-between items-center mt-2 text-sm text-gray-600">
-            <button onclick="likePhoto('${doc.id}', ${data.like || 0})" class="hover:text-red-600">❤️ ${data.like || 0}</button>
-            <div class="relative">
-              <button onclick="toggleMenu(this)" class="hover:text-blue-600">︙</button>
-              <div class="absolute right-0 mt-1 bg-white border rounded shadow hidden z-10">
-                <button onclick="downloadMedia('${data.url}')" class="block px-3 py-1 hover:bg-gray-100 w-full text-left">下載</button>
-                <button onclick="deletePhoto('${doc.id}')" class="block px-3 py-1 hover:bg-gray-100 w-full text-left text-red-600">刪除</button>
-              </div>
-            </div>
-          </div>
-        `;
+  <div class="overflow-hidden rounded">${media}</div>
+  <div class="flex justify-between items-center mt-2 text-sm text-gray-600">
+    <span>${data.uploader || "匿名"}</span>
+    <button onclick="likePhoto('${doc.id}', ${data.like || 0})" class="hover:text-red-600">❤️ ${data.like || 0}</button>
+    <div class="relative">
+      <button onclick="toggleMenu(this)" class="hover:text-blue-600">︙</button>
+      <div class="absolute right-0 mt-1 bg-white border rounded shadow hidden z-10">
+        <button onclick="downloadMedia('${data.url}')" class="block px-3 py-1 hover:bg-gray-100 w-full text-left">下載</button>
+        <button onclick="deletePhoto('${doc.id}')" class="block px-3 py-1 hover:bg-gray-100 w-full text-left text-red-600">刪除</button>
+      </div>
+    </div>
+  </div>
+`;
+
         container.appendChild(box);
       });
 
@@ -279,6 +291,29 @@ function closeModal() {
         .then(() => console.log('✅ Service Worker registered'))
         .catch(error => console.error('❌ Service Worker registration failed:', error));
     }
+    const auth = firebase.auth();
+let currentUser = null;
+
+auth.onAuthStateChanged(user => {
+  currentUser = user;
+  document.getElementById("loginBtn").classList.toggle("hidden", !!user);
+  document.getElementById("logoutBtn").classList.toggle("hidden", !user);
+  loadPhotos();
+});
+
+document.getElementById("loginBtn").addEventListener("click", async () => {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  try {
+    await auth.signInWithPopup(provider);
+  } catch (error) {
+    alert("登入失敗：" + error.message);
+  }
+});
+
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+  await auth.signOut();
+});
+
   </script>
   <!-- 圖片放大 Modal -->
 <div id="imageModal" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 hidden">
