@@ -82,306 +82,197 @@
     </a>
   </div>
 
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyDFh075x68NVbXfkvlPv4wa3uNi-rilcEk",
-      authDomain: "tokyo-14278.firebaseapp.com",
-      projectId: "tokyo-14278",
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const photosRef = db.collection("photos");
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyDFh075x68NVbXfkvlPv4wa3uNi-rilcEk",
+    authDomain: "tokyo-14278.firebaseapp.com",
+    projectId: "tokyo-14278",
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  const photosRef = db.collection("photos");
+  const auth = firebase.auth();
 
-    const deletePassword = "Aa123321@@";
+  const deletePassword = "Aa123321@@";
+  let selectedLatLng = null;
+  let mapInstance, marker;
 
-    let selectedLatLng = null;
-    let mapInstance, marker;
+  // 登入/登出控制
+  const loginBtn = document.getElementById("loginBtn");
+  const logoutBtn = document.getElementById("logoutBtn");
 
-    function openMapModal() {
-      document.getElementById("mapModal").classList.remove("hidden");
-      setTimeout(() => {
-        if (!mapInstance) {
-          mapInstance = L.map("map").setView([35.6895, 139.6917], 12); // 東京
-          L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-            attribution: '&copy; OpenStreetMap 貢獻者'
-          }).addTo(mapInstance);
-          mapInstance.on("click", function (e) {
-            selectedLatLng = e.latlng;
-            if (marker) marker.setLatLng(e.latlng);
-            else marker = L.marker(e.latlng).addTo(mapInstance);
-          });
-        } else {
-          mapInstance.invalidateSize();
-        }
-      }, 100);
+  loginBtn.addEventListener("click", async () => {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    try {
+      await auth.signInWithPopup(provider);
+    } catch (err) {
+      alert("登入失敗：" + err.message);
     }
+  });
 
-    function closeMapModal() {
-      document.getElementById("mapModal").classList.add("hidden");
+  logoutBtn.addEventListener("click", () => {
+    auth.signOut();
+  });
+
+  auth.onAuthStateChanged(user => {
+    if (user) {
+      loginBtn.classList.add("hidden");
+      logoutBtn.classList.remove("hidden");
+    } else {
+      loginBtn.classList.remove("hidden");
+      logoutBtn.classList.add("hidden");
     }
+  });
 
-    function confirmLocation() {
-      if (!selectedLatLng) return alert("請點選地圖上的位置");
-      closeMapModal();
-    }
-
-    async function handleUpload() {
-      const files = document.getElementById("uploadInput").files;
-      if (!files.length) return alert("請選擇檔案");
-
-      const getLocation = () => new Promise((resolve, reject) => {
-        if (selectedLatLng) return resolve(selectedLatLng);
-       async function handleUpload() {
-  const files = document.getElementById("uploadInput").files;
-  if (!files.length) return alert("請選擇檔案");
-
-  let lat = null;
-  let lng = null;
-
-  // 嘗試取得定位（非同步）
-  try {
-    const pos = await new Promise((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
-    });
-    lat = pos.coords.latitude;
-    lng = pos.coords.longitude;
-  } catch (err) {
-    console.warn("⚠️ 無法取得定位，將繼續上傳：", err.message);
+  // 地圖 modal 控制
+  function openMapModal() {
+    document.getElementById("mapModal").classList.remove("hidden");
+    setTimeout(() => {
+      if (!mapInstance) {
+        mapInstance = L.map("map").setView([35.6895, 139.6917], 12); // 東京
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: '&copy; OpenStreetMap 貢獻者'
+        }).addTo(mapInstance);
+        mapInstance.on("click", function (e) {
+          selectedLatLng = e.latlng;
+          if (marker) marker.setLatLng(e.latlng);
+          else marker = L.marker(e.latlng).addTo(mapInstance);
+        });
+      } else {
+        mapInstance.invalidateSize();
+      }
+    }, 100);
   }
 
-  for (const file of files) {
-    const isImage = file.type.startsWith("image/");
-    const isVideo = file.type.startsWith("video/");
-    if (!isImage && !isVideo) {
-      alert("只允許上傳圖片或影片");
-      continue;
-    }
-
-    document.getElementById("progressBar").classList.remove("hidden");
-
-    let uploadFile = file;
-    if (isImage) {
-      uploadFile = await imageCompression(file, {
-        maxSizeMB: 1,
-        maxWidthOrHeight: 1280,
-        useWebWorker: true,
-      });
-    }
-
-    const formData = new FormData();
-    formData.append("file", uploadFile);
-    formData.append("upload_preset", "tokyo_album");
-
-    const uploadUrl = isImage
-      ? "https://api.cloudinary.com/v1_1/dd2lnjt52/image/upload"
-      : "https://api.cloudinary.com/v1_1/dd2lnjt52/video/upload";
-
-    const res = await fetch(uploadUrl, {
-      method: "POST",
-      body: formData,
-    });
-
-    const data = await res.json();
-    await photosRef.add({
-      url: data.secure_url,
-      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-      like: 0,
-      type: isImage ? "image" : "video",
-      location: lat && lng ? { lat, lng } : null, // 沒有定位就存 null
-      uploader: firebase.auth().currentUser?.email || "匿名使用者"
-    });
-
-    document.getElementById("progressFill").style.width = "100%";
+  function closeMapModal() {
+    document.getElementById("mapModal").classList.add("hidden");
   }
 
-  setTimeout(() => {
-    document.getElementById("progressBar").classList.add("hidden");
-    document.getElementById("progressFill").style.width = "0%";
-  }, 1000);
+  function confirmLocation() {
+    if (!selectedLatLng) return alert("請點選地圖上的位置");
+    closeMapModal();
+  }
 
-  loadPhotos();
-  document.getElementById("uploadInput").value = "";
-}
+  async function handleUpload() {
+    const files = document.getElementById("uploadInput").files;
+    if (!files.length) return alert("請選擇檔案");
 
+    let lat = null;
+    let lng = null;
 
+    if (selectedLatLng) {
+      lat = selectedLatLng.lat;
+      lng = selectedLatLng.lng;
+    } else {
       try {
-        const location = await getLocation();
-
-        for (const file of files) {
-          const isImage = file.type.startsWith("image/");
-          const isVideo = file.type.startsWith("video/");
-          if (!isImage && !isVideo) {
-            alert("只允許上傳圖片或影片");
-            continue;
-          }
-
-          document.getElementById("progressBar").classList.remove("hidden");
-
-          let uploadFile = file;
-          if (isImage) {
-            uploadFile = await imageCompression(file, {
-              maxSizeMB: 1,
-              maxWidthOrHeight: 1280,
-              useWebWorker: true,
-            });
-          }
-
-          const formData = new FormData();
-          formData.append("file", uploadFile);
-          formData.append("upload_preset", "tokyo_album");
-
-          const uploadUrl = isImage
-            ? "https://api.cloudinary.com/v1_1/dd2lnjt52/image/upload"
-            : "https://api.cloudinary.com/v1_1/dd2lnjt52/video/upload";
-
-          const res = await fetch(uploadUrl, {
-            method: "POST",
-            body: formData,
-          });
-
-          const data = await res.json();
-          await photosRef.add({
-          url: data.secure_url,
-          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-          like: 0,
-          type: isImage ? "image" : "video",
-          location: { lat, lng },
-          uploader: currentUser ? (currentUser.displayName || currentUser.email) : "匿名"
-          });
-    
-
-          document.getElementById("progressFill").style.width = "100%";
-        }
-
-        setTimeout(() => {
-          document.getElementById("progressBar").classList.add("hidden");
-          document.getElementById("progressFill").style.width = "0%";
-        }, 1000);
-
-        loadPhotos();
-        document.getElementById("uploadInput").value = "";
-        selectedLatLng = null; // 清除已選位置
-
+        const pos = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+        });
+        lat = pos.coords.latitude;
+        lng = pos.coords.longitude;
       } catch (err) {
-        alert(typeof err === "string" ? err : "無法取得定位，請允許瀏覽器權限。");
+        console.warn("⚠️ 無法取得定位：", err.message);
       }
     }
 
-    async function loadPhotos() {
-      const container = document.getElementById("photoContainer");
-      container.innerHTML = "";
-      document.getElementById("loading").classList.remove("hidden");
+    for (const file of files) {
+      const isImage = file.type.startsWith("image/");
+      const isVideo = file.type.startsWith("video/");
+      if (!isImage && !isVideo) {
+        alert("只允許上傳圖片或影片");
+        continue;
+      }
 
-      const sort = document.getElementById("sortSelect").value;
-      const filter = document.getElementById("filterSelect").value;
+      document.getElementById("progressBar").classList.remove("hidden");
 
-      let query = photosRef;
-      if (sort === "newest") query = query.orderBy("timestamp", "desc");
-      else if (sort === "oldest") query = query.orderBy("timestamp", "asc");
-      else if (sort === "likes") query = query.orderBy("like", "desc");
+      let uploadFile = file;
+      if (isImage) {
+        uploadFile = await imageCompression(file, {
+          maxSizeMB: 1,
+          maxWidthOrHeight: 1280,
+          useWebWorker: true,
+        });
+      }
 
-      const snapshot = await query.get();
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        if (filter !== "all" && data.type !== filter) return;
+      const formData = new FormData();
+      formData.append("file", uploadFile);
+      formData.append("upload_preset", "tokyo_album");
 
-        const box = document.createElement("div");
-        box.className = "relative bg-white p-2 rounded shadow group";
+      const uploadUrl = isImage
+        ? "https://api.cloudinary.com/v1_1/dd2lnjt52/image/upload"
+        : "https://api.cloudinary.com/v1_1/dd2lnjt52/video/upload";
 
-       const media = data.type === "video"
-  ? `<video controls class="w-full rounded"><source src="${data.url}" type="video/mp4"></video>`
-  : `<img src="${data.url}" alt="media" class="w-full object-cover rounded cursor-pointer" onclick="openModal('${data.url}')" />`;
-
-        box.innerHTML = `
-  <div class="overflow-hidden rounded">${media}</div>
-  <div class="flex justify-between items-center mt-2 text-sm text-gray-600">
-    <span>${data.uploader || "匿名"}</span>
-    <button onclick="likePhoto('${doc.id}', ${data.like || 0})" class="hover:text-red-600">❤️ ${data.like || 0}</button>
-    <div class="relative">
-      <button onclick="toggleMenu(this)" class="hover:text-blue-600">︙</button>
-      <div class="absolute right-0 mt-1 bg-white border rounded shadow hidden z-10">
-        <button onclick="downloadMedia('${data.url}')" class="block px-3 py-1 hover:bg-gray-100 w-full text-left">下載</button>
-        <button onclick="deletePhoto('${doc.id}')" class="block px-3 py-1 hover:bg-gray-100 w-full text-left text-red-600">刪除</button>
-      </div>
-    </div>
-  </div>
-`;
-
-        container.appendChild(box);
+      const res = await fetch(uploadUrl, {
+        method: "POST",
+        body: formData,
       });
 
-      document.getElementById("loading").classList.add("hidden");
+      const data = await res.json();
+      const user = firebase.auth().currentUser;
+
+      await photosRef.add({
+        url: data.secure_url,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        like: 0,
+        type: isImage ? "image" : "video",
+        location: lat && lng ? { lat, lng } : null,
+        uploader: user ? (user.displayName || user.email) : "匿名"
+      });
+
+      document.getElementById("progressFill").style.width = "100%";
     }
 
-    function toggleMenu(button) {
-      const menu = button.nextElementSibling;
-      menu.classList.toggle("hidden");
-    }
+    setTimeout(() => {
+      document.getElementById("progressBar").classList.add("hidden");
+      document.getElementById("progressFill").style.width = "0%";
+    }, 1000);
 
-    async function likePhoto(id, currentLikes) {
-      await photosRef.doc(id).update({ like: currentLikes + 1 });
-      loadPhotos();
-    }
-
-    async function deletePhoto(id) {
-      const input = prompt("請輸入刪除密碼");
-      if (input !== deletePassword) return alert("密碼錯誤");
-      if (confirm("確定要刪除這張圖片/影片嗎？")) {
-        await photosRef.doc(id).delete();
-        loadPhotos();
-      }
-    }
-
-    function downloadMedia(url) {
-      const filename = prompt("請輸入檔名", "tokyo-media");
-      if (!filename) return;
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = filename;
-      link.click();
-    }
-
+    selectedLatLng = null;
+    document.getElementById("uploadInput").value = "";
     loadPhotos();
-
-    function openModal(url) {
-  document.getElementById("modalImage").src = url;
-  document.getElementById("imageModal").classList.remove("hidden");
-}
-
-function closeModal() {
-  document.getElementById("imageModal").classList.add("hidden");
-}
-
-
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
-        .then(() => console.log('✅ Service Worker registered'))
-        .catch(error => console.error('❌ Service Worker registration failed:', error));
-    }
-    const auth = firebase.auth();
-let currentUser = null;
-
-auth.onAuthStateChanged(user => {
-  currentUser = user;
-  document.getElementById("loginBtn").classList.toggle("hidden", !!user);
-  document.getElementById("logoutBtn").classList.toggle("hidden", !user);
-  loadPhotos();
-});
-
-document.getElementById("loginBtn").addEventListener("click", async () => {
-  const provider = new firebase.auth.GoogleAuthProvider();
-  try {
-    await auth.signInWithPopup(provider);
-  } catch (error) {
-    alert("登入失敗：" + error.message);
   }
-});
 
-document.getElementById("logoutBtn").addEventListener("click", async () => {
-  await auth.signOut();
-});
+  async function loadPhotos() {
+    const container = document.getElementById("photoContainer");
+    container.innerHTML = "";
+    document.getElementById("loading").classList.remove("hidden");
 
-  </script>
+    const sort = document.getElementById("sortSelect").value;
+    const filter = document.getElementById("filterSelect").value;
+
+    let query = photosRef;
+    if (sort === "newest") query = query.orderBy("timestamp", "desc");
+    else if (sort === "oldest") query = query.orderBy("timestamp", "asc");
+    else if (sort === "likes") query = query.orderBy("like", "desc");
+
+    const snapshot = await query.get();
+    document.getElementById("loading").classList.add("hidden");
+
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      if (filter === "image" && data.type !== "image") return;
+      if (filter === "video" && data.type !== "video") return;
+
+      const wrapper = document.createElement("div");
+      wrapper.className = "bg-white rounded shadow p-2";
+
+      if (data.type === "image") {
+        wrapper.innerHTML = `<img src="${data.url}" class="w-full rounded" alt="photo" />`;
+      } else {
+        wrapper.innerHTML = `
+          <video controls class="w-full rounded">
+            <source src="${data.url}" type="video/mp4" />
+            您的瀏覽器不支援影片播放。
+          </video>`;
+      }
+
+      container.appendChild(wrapper);
+    });
+  }
+
+  window.addEventListener("DOMContentLoaded", loadPhotos);
+</script>
+
   <!-- 圖片放大 Modal -->
 <div id="imageModal" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 hidden">
   <img id="modalImage" class="max-w-full max-h-full rounded-lg" />
