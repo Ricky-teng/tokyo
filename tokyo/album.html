@@ -249,9 +249,14 @@
     document.getElementById("loading").classList.add("hidden");
 
     snapshot.forEach(doc => {
-      const data = doc.data();
-      if (filter === "image" && data.type !== "image") return;
-      if (filter === "video" && data.type !== "video") return;
+  const data = doc.data();
+  if (filter === "image" && data.type !== "image") return;
+  if (filter === "video" && data.type !== "video") return;
+
+  const card = createPhotoCard(doc); // 使用新的卡片函式
+  container.appendChild(card);
+});
+
 
       const wrapper = document.createElement("div");
       wrapper.className = "bg-white rounded shadow p-2";
@@ -271,6 +276,65 @@
   }
 
   window.addEventListener("DOMContentLoaded", loadPhotos);
+ function createPhotoCard(doc) {
+  const data = doc.data();
+  const id = doc.id;
+  const wrapper = document.createElement("div");
+  wrapper.className = "bg-white rounded shadow p-2 relative";
+
+  // 圖片或影片
+  const media = data.type === "image"
+    ? `<img src="${data.url}" class="w-full rounded cursor-pointer" onclick="openImageModal('${data.url}')" />`
+    : `<video controls class="w-full rounded">
+        <source src="${data.url}" type="video/mp4" />
+        您的瀏覽器不支援影片播放。
+      </video>`;
+
+  // 喜歡 & 刪除
+  const likeCount = data.like || 0;
+  const user = firebase.auth().currentUser;
+  const isUploader = user && (user.displayName === data.uploader || user.email === data.uploader);
+
+  wrapper.innerHTML = `
+    ${media}
+    <div class="flex justify-between items-center mt-2 text-sm">
+      <span class="text-gray-600">👤 ${data.uploader || "匿名"}</span>
+      <div class="flex items-center gap-2">
+        <button onclick="likePhoto('${id}')" class="text-red-500 hover:scale-110 transform transition">❤️ ${likeCount}</button>
+        ${isUploader ? `<button onclick="deletePhoto('${id}')" class="text-gray-500 hover:text-red-600">🗑️</button>` : ""}
+      </div>
+    </div>
+  `;
+
+  return wrapper;
+}
+
+async function likePhoto(id) {
+  const docRef = photosRef.doc(id);
+  try {
+    await db.runTransaction(async (t) => {
+      const doc = await t.get(docRef);
+      const currentLike = doc.data().like || 0;
+      t.update(docRef, { like: currentLike + 1 });
+    });
+    loadPhotos(); // 重新載入顯示最新 like 數
+  } catch (err) {
+    alert("按讚失敗：" + err.message);
+  }
+}
+
+async function deletePhoto(id) {
+  const input = prompt("請輸入刪除密碼：");
+  if (input !== deletePassword) return alert("密碼錯誤，無法刪除。");
+  try {
+    await photosRef.doc(id).delete();
+    alert("刪除成功");
+    loadPhotos(); // 重新載入
+  } catch (err) {
+    alert("刪除失敗：" + err.message);
+  }
+}
+
 </script>
 
   <!-- 圖片放大 Modal -->
