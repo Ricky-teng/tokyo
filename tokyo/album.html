@@ -131,11 +131,78 @@
 
       const getLocation = () => new Promise((resolve, reject) => {
         if (selectedLatLng) return resolve(selectedLatLng);
-        navigator.geolocation.getCurrentPosition(
-          pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-          () => reject("無法取得定位")
-        );
+       async function handleUpload() {
+  const files = document.getElementById("uploadInput").files;
+  if (!files.length) return alert("請選擇檔案");
+
+  let lat = null;
+  let lng = null;
+
+  // 嘗試取得定位（非同步）
+  try {
+    const pos = await new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+    });
+    lat = pos.coords.latitude;
+    lng = pos.coords.longitude;
+  } catch (err) {
+    console.warn("⚠️ 無法取得定位，將繼續上傳：", err.message);
+  }
+
+  for (const file of files) {
+    const isImage = file.type.startsWith("image/");
+    const isVideo = file.type.startsWith("video/");
+    if (!isImage && !isVideo) {
+      alert("只允許上傳圖片或影片");
+      continue;
+    }
+
+    document.getElementById("progressBar").classList.remove("hidden");
+
+    let uploadFile = file;
+    if (isImage) {
+      uploadFile = await imageCompression(file, {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1280,
+        useWebWorker: true,
       });
+    }
+
+    const formData = new FormData();
+    formData.append("file", uploadFile);
+    formData.append("upload_preset", "tokyo_album");
+
+    const uploadUrl = isImage
+      ? "https://api.cloudinary.com/v1_1/dd2lnjt52/image/upload"
+      : "https://api.cloudinary.com/v1_1/dd2lnjt52/video/upload";
+
+    const res = await fetch(uploadUrl, {
+      method: "POST",
+      body: formData,
+    });
+
+    const data = await res.json();
+    await photosRef.add({
+      url: data.secure_url,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      like: 0,
+      type: isImage ? "image" : "video",
+      location: lat && lng ? { lat, lng } : null, // 沒有定位就存 null
+      uploader: firebase.auth().currentUser?.email || "匿名使用者"
+    });
+
+    document.getElementById("progressFill").style.width = "100%";
+  }
+
+  setTimeout(() => {
+    document.getElementById("progressBar").classList.add("hidden");
+    document.getElementById("progressFill").style.width = "0%";
+  }, 1000);
+
+  loadPhotos();
+  document.getElementById("uploadInput").value = "";
+}
+
 
       try {
         const location = await getLocation();
