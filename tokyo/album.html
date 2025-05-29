@@ -1,34 +1,35 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
- <nav class="fixed top-0 left-0 w-full bg-white border-b z-50">
-  <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-    <h1 class="text-xl font-bold text-blue-600">東京9日旅行相簿</h1>
-    <ul class="flex space-x-4 text-sm font-medium">
-      <li><a target="_self" href="index.html" class="hover:text-blue-600">首頁</a></li>
-      <li><a target="_self" href="plan.html" class="text-blue-600">每日行程</a></li>
-      <li><a target="_self" href="map.html" class="hover:text-blue-600">地圖總覽</a></li>
-      <li><a target="_self" href="album.html" class="hover:text-blue-600">相簿</a></li>
-      <li><a target="_self" href="about.html" class="hover:text-blue-600">關於我們</a></li>
-       <button id="loginBtn" class="hover:underline">登入</button>
-  <button id="logoutBtn" class="hover:underline hidden">登出</button>
-    </ul>
-  </div>
-</nav>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>相簿</title>
+  <title>旅行相簿</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.1/dist/browser-image-compression.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-
-  <link rel="manifest" href="manifest.json" />
+  <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.1/dist/browser-image-compression.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <link rel="manifest" href="manifest.json" />
 </head>
 <body class="bg-gray-100 min-h-screen">
+
+  <!-- 導覽列 -->
+  <nav class="fixed top-0 left-0 w-full bg-white border-b z-50">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+      <h1 class="text-xl font-bold text-blue-600">東京9日旅行相簿</h1>
+      <ul class="flex space-x-4 text-sm font-medium items-center">
+        <li><a href="index.html" class="hover:text-blue-600">首頁</a></li>
+        <li><a href="plan.html" class="hover:text-blue-600">每日行程</a></li>
+        <li><a href="map.html" class="hover:text-blue-600">地圖總覽</a></li>
+        <li><a href="album.html" class="text-blue-600">相簿</a></li>
+        <li><a href="about.html" class="hover:text-blue-600">關於我們</a></li>
+        <li><button id="loginBtn" class="hover:underline">登入</button></li>
+        <li><button id="logoutBtn" class="hover:underline hidden">登出</button></li>
+      </ul>
+    </div>
+  </nav>
 
   <div class="max-w-5xl mx-auto px-4 pt-24 pb-16">
     <h1 class="text-3xl font-bold text-center text-blue-600 mb-6">旅行相簿</h1>
@@ -36,8 +37,8 @@
     <!-- 控制列 -->
     <div class="flex flex-col sm:flex-row sm:items-center gap-2 mb-4 justify-between">
       <input id="uploadInput" type="file" multiple accept="image/*,video/*" class="border p-2 rounded bg-white shadow" />
-      <button onclick="handleUpload()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">上傳</button>
-      <button onclick="openMapModal()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">📍選擇位置</button>
+      <button onclick="handleUpload()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">上傳</button>
+      <button onclick="openMapModal()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">📍選擇位置</button>
       <select id="sortSelect" onchange="loadPhotos()" class="border p-2 rounded bg-white shadow">
         <option value="newest">由新到舊</option>
         <option value="oldest">由舊到新</option>
@@ -50,7 +51,7 @@
       </select>
     </div>
 
-    <!-- 地圖選點 Modal -->
+    <!-- 地圖 Modal -->
     <div id="mapModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 hidden">
       <div class="bg-white rounded-lg shadow-lg p-4 w-full max-w-md">
         <h2 class="text-lg font-bold mb-2">請點選上傳位置</h2>
@@ -62,7 +63,7 @@
       </div>
     </div>
 
-    <!-- 上傳進度條 -->
+    <!-- 進度條 -->
     <div id="progressBar" class="w-full bg-gray-300 rounded h-2 mb-4 hidden">
       <div id="progressFill" class="bg-blue-600 h-2 rounded" style="width: 0%"></div>
     </div>
@@ -73,11 +74,11 @@
       <p class="text-gray-500 mt-2">載入中...</p>
     </div>
 
-    <!-- 相片/影片容器 -->
+    <!-- 相片容器 -->
     <div id="photoContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
 
-    <!-- 地圖按鈕 -->
-    <a href="photomap.html" class="fixed bottom-6 right-6 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-full shadow-lg transition z-50">
+    <!-- 查看地圖按鈕 -->
+    <a href="photomap.html" class="fixed bottom-6 right-6 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-full shadow-lg z-50">
       🗺️ 查看地圖
     </a>
   </div>
@@ -90,14 +91,13 @@
   };
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
-  const photosRef = db.collection("photos");
   const auth = firebase.auth();
+  const photosRef = db.collection("photos");
 
-  const deletePassword = "Aa123321@@";
   let selectedLatLng = null;
   let mapInstance, marker;
 
-  // 登入/登出控制
+  // 登入登出控制
   const loginBtn = document.getElementById("loginBtn");
   const logoutBtn = document.getElementById("logoutBtn");
 
@@ -110,30 +110,23 @@
     }
   });
 
-  logoutBtn.addEventListener("click", () => {
-    auth.signOut();
-  });
+  logoutBtn.addEventListener("click", () => auth.signOut());
 
   auth.onAuthStateChanged(user => {
-    if (user) {
-      loginBtn.classList.add("hidden");
-      logoutBtn.classList.remove("hidden");
-    } else {
-      loginBtn.classList.remove("hidden");
-      logoutBtn.classList.add("hidden");
-    }
+    loginBtn.classList.toggle("hidden", !!user);
+    logoutBtn.classList.toggle("hidden", !user);
   });
 
-  // 地圖 modal 控制
+  // 地圖選點 modal 控制
   function openMapModal() {
     document.getElementById("mapModal").classList.remove("hidden");
     setTimeout(() => {
       if (!mapInstance) {
-        mapInstance = L.map("map").setView([35.6895, 139.6917], 12); // 東京
+        mapInstance = L.map("map").setView([35.6895, 139.6917], 12);
         L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
           attribution: '&copy; OpenStreetMap 貢獻者'
         }).addTo(mapInstance);
-        mapInstance.on("click", function (e) {
+        mapInstance.on("click", e => {
           selectedLatLng = e.latlng;
           if (marker) marker.setLatLng(e.latlng);
           else marker = L.marker(e.latlng).addTo(mapInstance);
@@ -157,41 +150,28 @@
     const files = document.getElementById("uploadInput").files;
     if (!files.length) return alert("請選擇檔案");
 
-    let lat = null;
-    let lng = null;
-
+    let lat = null, lng = null;
     if (selectedLatLng) {
       lat = selectedLatLng.lat;
       lng = selectedLatLng.lng;
     } else {
       try {
-        const pos = await new Promise((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
-        });
+        const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej));
         lat = pos.coords.latitude;
         lng = pos.coords.longitude;
-      } catch (err) {
-        console.warn("⚠️ 無法取得定位：", err.message);
-      }
+      } catch {}
     }
+
+    document.getElementById("progressBar").classList.remove("hidden");
 
     for (const file of files) {
       const isImage = file.type.startsWith("image/");
       const isVideo = file.type.startsWith("video/");
-      if (!isImage && !isVideo) {
-        alert("只允許上傳圖片或影片");
-        continue;
-      }
-
-      document.getElementById("progressBar").classList.remove("hidden");
+      if (!isImage && !isVideo) continue;
 
       let uploadFile = file;
       if (isImage) {
-        uploadFile = await imageCompression(file, {
-          maxSizeMB: 1,
-          maxWidthOrHeight: 1280,
-          useWebWorker: true,
-        });
+        uploadFile = await imageCompression(file, { maxSizeMB: 1, maxWidthOrHeight: 1280 });
       }
 
       const formData = new FormData();
@@ -202,14 +182,10 @@
         ? "https://api.cloudinary.com/v1_1/dd2lnjt52/image/upload"
         : "https://api.cloudinary.com/v1_1/dd2lnjt52/video/upload";
 
-      const res = await fetch(uploadUrl, {
-        method: "POST",
-        body: formData,
-      });
-
+      const res = await fetch(uploadUrl, { method: "POST", body: formData });
       const data = await res.json();
-      const user = firebase.auth().currentUser;
 
+      const user = firebase.auth().currentUser;
       await photosRef.add({
         url: data.secure_url,
         timestamp: firebase.firestore.FieldValue.serverTimestamp(),
@@ -218,10 +194,9 @@
         location: lat && lng ? { lat, lng } : null,
         uploader: user ? (user.displayName || user.email) : "匿名"
       });
-
-      document.getElementById("progressFill").style.width = "100%";
     }
 
+    document.getElementById("progressFill").style.width = "100%";
     setTimeout(() => {
       document.getElementById("progressBar").classList.add("hidden");
       document.getElementById("progressFill").style.width = "0%";
@@ -242,106 +217,31 @@
 
     let query = photosRef;
     if (sort === "newest") query = query.orderBy("timestamp", "desc");
-    else if (sort === "oldest") query = query.orderBy("timestamp", "asc");
-    else if (sort === "likes") query = query.orderBy("like", "desc");
+    if (sort === "oldest") query = query.orderBy("timestamp", "asc");
+    if (sort === "likes") query = query.orderBy("like", "desc");
 
     const snapshot = await query.get();
     document.getElementById("loading").classList.add("hidden");
 
     snapshot.forEach(doc => {
-  const data = doc.data();
-  if (filter === "image" && data.type !== "image") return;
-  if (filter === "video" && data.type !== "video") return;
+      const data = doc.data();
+      if (filter === "image" && data.type !== "image") return;
+      if (filter === "video" && data.type !== "video") return;
 
-  const card = createPhotoCard(doc); // 使用新的卡片函式
-  container.appendChild(card);
-});
-
-
-      const wrapper = document.createElement("div");
-      wrapper.className = "bg-white rounded shadow p-2";
+      const card = document.createElement("div");
+      card.className = "bg-white rounded shadow p-2";
 
       if (data.type === "image") {
-        wrapper.innerHTML = `<img src="${data.url}" class="w-full rounded" alt="photo" />`;
+        card.innerHTML = `<img src="${data.url}" class="w-full rounded" alt="photo">`;
       } else {
-        wrapper.innerHTML = `
-          <video controls class="w-full rounded">
-            <source src="${data.url}" type="video/mp4" />
-            您的瀏覽器不支援影片播放。
-          </video>`;
+        card.innerHTML = `<video controls class="w-full rounded"><source src="${data.url}" type="video/mp4">不支援播放。</video>`;
       }
 
-      container.appendChild(wrapper);
+      container.appendChild(card);
     });
   }
 
   window.addEventListener("DOMContentLoaded", loadPhotos);
- function createPhotoCard(doc) {
-  const data = doc.data();
-  const id = doc.id;
-  const wrapper = document.createElement("div");
-  wrapper.className = "bg-white rounded shadow p-2 relative";
-
-  // 圖片或影片
-  const media = data.type === "image"
-    ? `<img src="${data.url}" class="w-full rounded cursor-pointer" onclick="openImageModal('${data.url}')" />`
-    : `<video controls class="w-full rounded">
-        <source src="${data.url}" type="video/mp4" />
-        您的瀏覽器不支援影片播放。
-      </video>`;
-
-  // 喜歡 & 刪除
-  const likeCount = data.like || 0;
-  const user = firebase.auth().currentUser;
-  const isUploader = user && (user.displayName === data.uploader || user.email === data.uploader);
-
-  wrapper.innerHTML = `
-    ${media}
-    <div class="flex justify-between items-center mt-2 text-sm">
-      <span class="text-gray-600">👤 ${data.uploader || "匿名"}</span>
-      <div class="flex items-center gap-2">
-        <button onclick="likePhoto('${id}')" class="text-red-500 hover:scale-110 transform transition">❤️ ${likeCount}</button>
-        ${isUploader ? `<button onclick="deletePhoto('${id}')" class="text-gray-500 hover:text-red-600">🗑️</button>` : ""}
-      </div>
-    </div>
-  `;
-
-  return wrapper;
-}
-
-async function likePhoto(id) {
-  const docRef = photosRef.doc(id);
-  try {
-    await db.runTransaction(async (t) => {
-      const doc = await t.get(docRef);
-      const currentLike = doc.data().like || 0;
-      t.update(docRef, { like: currentLike + 1 });
-    });
-    loadPhotos(); // 重新載入顯示最新 like 數
-  } catch (err) {
-    alert("按讚失敗：" + err.message);
-  }
-}
-
-async function deletePhoto(id) {
-  const input = prompt("請輸入刪除密碼：");
-  if (input !== deletePassword) return alert("密碼錯誤，無法刪除。");
-  try {
-    await photosRef.doc(id).delete();
-    alert("刪除成功");
-    loadPhotos(); // 重新載入
-  } catch (err) {
-    alert("刪除失敗：" + err.message);
-  }
-}
-
 </script>
-
-  <!-- 圖片放大 Modal -->
-<div id="imageModal" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 hidden">
-  <img id="modalImage" class="max-w-full max-h-full rounded-lg" />
-  <button onclick="closeModal()" class="absolute top-4 right-4 text-white text-2xl">✕</button>
-</div>
-
 </body>
 </html>
