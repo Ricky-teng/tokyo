@@ -1,73 +1,84 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-TW">
 <head>
-  <title>設定個人檔案</title>
-  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-storage.js"></script>
-  <script src="/firebase-init.js"></script>
+  <meta charset="UTF-8">
+  <title>編輯個人資料</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
 </head>
-<body>
-  <h1>設定個人檔案</h1>
-  <form id="profileForm">
-    <label>顯示名稱：
-      <input type="text" id="displayNameInput">
-    </label><br><br>
-    <label>頭像上傳：
-      <input type="file" id="photoUpload">
-    </label><br><br>
-    <img id="previewAvatar" src="" style="width: 100px; height: 100px; border-radius: 50%;"><br><br>
-    <button type="submit">儲存設定</button>
-  </form>
+<body class="bg-gray-50 text-gray-800">
 
-  <script>
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-    const storage = firebase.storage();
+<!-- 🔹 Navbar -->
+<nav class="bg-blue-600 text-white p-4 flex justify-between items-center">
+  <span class="text-lg font-semibold">個人檔案設定</span>
+  <a href="album.html" class="text-white underline">返回相簿</a>
+</nav>
 
-    auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        const userRef = db.collection("users").doc(user.uid);
-        const doc = await userRef.get();
-        if (doc.exists) {
-          const data = doc.data();
-          document.getElementById("displayNameInput").value = data.displayName || "";
-          document.getElementById("previewAvatar").src = data.photoURL || "";
-        }
+<!-- 🔹 Profile Form -->
+<div class="max-w-md mx-auto mt-10 bg-white p-6 rounded shadow">
+  <div class="flex flex-col items-center gap-4">
+    <img id="avatarPreview" class="w-24 h-24 rounded-full object-cover" src="https://via.placeholder.com/100" alt="Avatar">
+    <input type="file" id="avatarInput" accept="image/*" class="mb-2">
+    <input type="text" id="displayNameInput" class="border rounded px-4 py-2 w-full" placeholder="輸入顯示名稱">
+    <button id="saveBtn" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded">儲存變更</button>
+  </div>
+</div>
 
-        document.getElementById("photoUpload").addEventListener("change", (e) => {
-          const file = e.target.files[0];
-          if (file) {
-            const reader = new FileReader();
-            reader.onload = () => {
-              document.getElementById("previewAvatar").src = reader.result;
-            };
-            reader.readAsDataURL(file);
-          }
-        });
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyDFh075x68NVbXfkvlPv4wa3uNi-rilcEk",
+    authDomain: "tokyo-14278.firebaseapp.com",
+    projectId: "tokyo-14278",
+    storageBucket: "tokyo-14278.appspot.com",
+    messagingSenderId: "831929477903",
+    appId: "1:831929477903:web:02cfff17d8c6b4c29d6c7a",
+    measurementId: "G-10T563NMRW"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const storage = firebase.storage();
 
-        document.getElementById("profileForm").addEventListener("submit", async (e) => {
-          e.preventDefault();
-          const displayName = document.getElementById("displayNameInput").value;
-          const file = document.getElementById("photoUpload").files[0];
+  let currentUser = null;
+  let newAvatarFile = null;
 
-          let photoURL = doc.data().photoURL;
-          if (file) {
-            const storageRef = storage.ref().child("avatars/" + user.uid);
-            await storageRef.put(file);
-            photoURL = await storageRef.getDownloadURL();
-          }
+  auth.onAuthStateChanged(user => {
+    if (!user) {
+      alert("請先登入");
+      location.href = "album.html";
+      return;
+    }
+    currentUser = user;
+    document.getElementById("displayNameInput").value = user.displayName || "";
+    document.getElementById("avatarPreview").src = user.photoURL || "https://via.placeholder.com/100";
+  });
 
-          await userRef.set({
-            displayName,
-            photoURL
-          });
+  document.getElementById("avatarInput").addEventListener("change", e => {
+    const file = e.target.files[0];
+    if (file) {
+      newAvatarFile = file;
+      const reader = new FileReader();
+      reader.onload = e => document.getElementById("avatarPreview").src = e.target.result;
+      reader.readAsDataURL(file);
+    }
+  });
 
-          alert("更新成功！");
-        });
-      }
-    });
-  </script>
+  document.getElementById("saveBtn").addEventListener("click", async () => {
+    const newName = document.getElementById("displayNameInput").value.trim();
+    let photoURL = currentUser.photoURL;
+
+    if (newAvatarFile) {
+      const avatarRef = storage.ref().child(`avatars/${currentUser.uid}_${Date.now()}`);
+      await avatarRef.put(newAvatarFile);
+      photoURL = await avatarRef.getDownloadURL();
+    }
+
+    await currentUser.updateProfile({ displayName: newName, photoURL });
+    alert("更新成功！");
+    location.href = "album.html";
+  });
+</script>
 </body>
 </html>
