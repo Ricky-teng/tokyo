@@ -6,9 +6,54 @@
   <title>東京 9 日旅行</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+
 </head>
 <body class="bg-gradient-to-b from-white via-blue-50 to-white text-gray-800 font-sans">
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyDFh075x68NVbXfkvlPv4wa3uNi-rilcEk",
+    authDomain: "tokyo-14278.firebaseapp.com",
+    projectId: "tokyo-14278",
+    storageBucket: "tokyo-14278.appspot.com",
+    messagingSenderId: "831929477903",
+    appId: "1:831929477903:web:02cfff17d8c6b4c29d6c7a",
+    measurementId: "G-10T563NMRW"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
 
+  const login = async () => {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    try {
+      await auth.signInWithPopup(provider);
+    } catch (error) {
+      console.error("登入失敗", error);
+    }
+  };
+
+  const logout = () => auth.signOut();
+
+  auth.onAuthStateChanged(user => {
+    const loginBtn = document.getElementById("loginBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const userName = document.getElementById("userName");
+    const userAvatar = document.getElementById("userAvatar");
+
+    if (user) {
+      if (loginBtn) loginBtn.style.display = "none";
+      if (logoutBtn) logoutBtn.style.display = "inline";
+      if (userName) userName.textContent = user.displayName || "未命名";
+      if (userAvatar) userAvatar.src = user.photoURL || "https://via.placeholder.com/30";
+    } else {
+      if (loginBtn) loginBtn.style.display = "inline";
+      if (logoutBtn) logoutBtn.style.display = "none";
+      if (userName) userName.textContent = "";
+      if (userAvatar) userAvatar.src = "";
+    }
+  });
+</script>
 <!-- 導覽列 -->
 <nav class="fixed top-0 left-0 w-full bg-white border-b z-50">
   <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
@@ -19,10 +64,15 @@
       <li><a href="map.html" class="hover:text-blue-600">地圖總覽</a></li>
       <li><a href="album.html" class="hover:text-blue-600">相簿</a></li>
       <li><a href="about.html" class="hover:text-blue-600">關於我們</a></li>
-       <button id="loginBtn" class="hover:underline">登入</button>
-  <button id="logoutBtn" class="hover:underline hidden">登出</button>
     </ul>
   </div>
+  <div class="flex items-center gap-2">
+  <img id="userAvatar" class="w-8 h-8 rounded-full hidden sm:inline" />
+  <span id="userName" class="text-sm font-medium"></span>
+  <button id="loginBtn" onclick="login()" class="text-white underline">登入</button>
+  <button id="logoutBtn" onclick="logout()" class="text-white underline hidden">登出</button>
+</div>
+
 </nav>
 
 <!-- 首頁內容 -->
