@@ -4,21 +4,34 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>個人資料設定</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.1/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      background-color: #f0f4f8;
+    }
+  </style>
 </head>
-<body>
-  <h1>個人資料設定</h1>
-  <label>顯示名稱</label>
-  <input type="text" id="displayName" /><br><br>
+<body class="flex items-center justify-center min-h-screen">
+  <div class="bg-white shadow-lg rounded-xl p-8 w-full max-w-md">
+    <h1 class="text-2xl font-bold text-center mb-6 text-blue-700">個人資料設定</h1>
 
-  <label>大頭貼</label>
-  <input type="file" id="avatar" accept="image/*" /><br>
-  <img id="preview" src="" alt="大頭貼預覽" width="100" style="display:block;margin-top:10px;" /><br>
+    <label class="block mb-2 text-sm font-medium text-gray-700">顯示名稱</label>
+    <input type="text" id="displayName" class="w-full p-2 border border-gray-300 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-blue-300" />
 
-  <button id="saveBtn">儲存</button>
-  <p id="status" style="color: green;"></p>
+    <label class="block mb-2 text-sm font-medium text-gray-700">大頭貼</label>
+    <input type="file" id="avatar" accept="image/*" class="mb-2" />
+    <img id="preview" src="" alt="大頭貼預覽" class="rounded-full w-24 h-24 object-cover shadow mb-4" style="display: none;" />
+
+    <button id="saveBtn" class="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600 transition">
+      儲存
+    </button>
+
+    <p id="status" class="text-center mt-4 text-sm"></p>
+  </div>
 
   <script type="module">
-    // ✅ 替換為你的 Firebase 設定
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getAuth, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
@@ -73,6 +86,7 @@
 
       if (file.size > 10 * 1024 * 1024) {
         statusText.textContent = "圖片太大，請選擇小於 10MB 的圖片";
+        statusText.className = "text-red-500 text-center mt-4 text-sm";
         return;
       }
 
@@ -81,18 +95,21 @@
       }
 
       preview.src = URL.createObjectURL(file);
+      preview.style.display = "block";
       try {
         selectedFile = await compressImage(file);
       } catch (err) {
         statusText.textContent = "圖片壓縮失敗";
+        statusText.className = "text-red-500 text-center mt-4 text-sm";
         console.error(err);
       }
     });
 
     saveBtn.addEventListener("click", async () => {
       if (!currentUser) return;
-
       statusText.textContent = "儲存中...";
+      statusText.className = "text-gray-500 text-center mt-4 text-sm";
+
       let photoURL = currentUser.photoURL;
 
       if (selectedFile) {
@@ -116,6 +133,7 @@
         } catch (error) {
           console.error(error);
           statusText.textContent = "儲存失敗：Cloudinary 上傳失敗";
+          statusText.className = "text-red-500 text-center mt-4 text-sm";
           return;
         }
       }
@@ -126,22 +144,25 @@
           photoURL: photoURL
         });
         statusText.textContent = "儲存成功！";
+        statusText.className = "text-green-600 text-center mt-4 text-sm";
       } catch (error) {
         console.error(error);
         statusText.textContent = "儲存失敗：Firebase 更新失敗";
+        statusText.className = "text-red-500 text-center mt-4 text-sm";
       }
     });
 
-    // 取得使用者資料
     onAuthStateChanged(auth, (user) => {
       if (user) {
         currentUser = user;
         displayNameInput.value = user.displayName || "";
         if (user.photoURL) {
           preview.src = user.photoURL;
+          preview.style.display = "block";
         }
       } else {
         statusText.textContent = "尚未登入";
+        statusText.className = "text-red-500 text-center mt-4 text-sm";
         saveBtn.disabled = true;
       }
     });
