@@ -4,8 +4,44 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>個人資料設定</title>
- <script type="module">
-// ...Firebase 初始化不變...
+</head>
+<body>
+  <h1>個人資料設定</h1>
+  <label>顯示名稱</label>
+  <input type="text" id="displayName" /><br><br>
+
+  <label>大頭貼</label>
+  <input type="file" id="avatar" accept="image/*" /><br>
+  <img id="preview" src="" alt="大頭貼預覽" width="100" style="display:block;margin-top:10px;" /><br>
+
+  <button id="saveBtn">儲存</button>
+  <p id="status" style="color: green;"></p>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDFh075x68NVbXfkvlPv4wa3uNi-rilcEk",
+  authDomain: "tokyo-14278.firebaseapp.com",
+  projectId: "tokyo-14278",
+  storageBucket: "tokyo-14278.appspot.com",
+  messagingSenderId: "831929477903",
+  appId: "1:831929477903:web:02cfff17d8c6b4c29d6c7a",
+  measurementId: "G-10T563NMRW"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+const displayNameInput = document.getElementById("displayName");
+const fileInput = document.getElementById("avatar");
+const preview = document.getElementById("preview");
+const saveBtn = document.getElementById("saveBtn");
+const statusText = document.getElementById("status");
+
+let currentUser = null;
+let selectedFile = null;
 
 function compressImage(file, maxWidth = 600, quality = 0.7) {
   return new Promise((resolve, reject) => {
@@ -37,11 +73,13 @@ fileInput.addEventListener("change", async () => {
   const file = fileInput.files[0];
   if (file) {
     preview.src = URL.createObjectURL(file);
-    selectedFile = await compressImage(file); // ⬅️ 壓縮後的圖片
+    selectedFile = await compressImage(file);
   }
 });
 
 saveBtn.addEventListener("click", async () => {
+  if (!currentUser) return;
+
   statusText.textContent = "儲存中...";
   let photoURL = currentUser.photoURL;
 
@@ -50,7 +88,7 @@ saveBtn.addEventListener("click", async () => {
       const formData = new FormData();
       formData.append("file", selectedFile);
       formData.append("upload_preset", "tokyo_album");
-      formData.append("folder", "tokyo-trip");
+      formData.append("folder", "/"); // 上傳到根目錄
 
       const res = await fetch("https://api.cloudinary.com/v1_1/dd2lnjt52/image/upload", {
         method: "POST",
@@ -81,19 +119,17 @@ saveBtn.addEventListener("click", async () => {
     statusText.textContent = "儲存失敗：Firebase 更新失敗";
   }
 });
+
+// 登入狀態監聽：載入使用者資料
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    currentUser = user;
+    displayNameInput.value = user.displayName || "";
+    preview.src = user.photoURL || "";
+  } else {
+    statusText.textContent = "請先登入";
+  }
+});
 </script>
-
-</head>
-<body>
-  <h1>個人資料設定</h1>
-  <label>顯示名稱</label>
-  <input type="text" id="displayName" /><br><br>
-
-  <label>大頭貼</label>
-  <input type="file" id="avatar" accept="image/*" /><br>
-  <img id="preview" src="" alt="大頭貼預覽" width="100" style="display:block;margin-top:10px;" /><br>
-
-  <button id="saveBtn">儲存</button>
-  <p id="status" style="color: green;"></p>
 </body>
 </html>
