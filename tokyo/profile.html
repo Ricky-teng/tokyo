@@ -17,119 +17,134 @@
   <button id="saveBtn">儲存</button>
   <p id="status" style="color: green;"></p>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  <script type="module">
+    // ✅ 替換為你的 Firebase 設定
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDFh075x68NVbXfkvlPv4wa3uNi-rilcEk",
-  authDomain: "tokyo-14278.firebaseapp.com",
-  projectId: "tokyo-14278",
-  storageBucket: "tokyo-14278.appspot.com",
-  messagingSenderId: "831929477903",
-  appId: "1:831929477903:web:02cfff17d8c6b4c29d6c7a",
-  measurementId: "G-10T563NMRW"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-
-const displayNameInput = document.getElementById("displayName");
-const fileInput = document.getElementById("avatar");
-const preview = document.getElementById("preview");
-const saveBtn = document.getElementById("saveBtn");
-const statusText = document.getElementById("status");
-
-let currentUser = null;
-let selectedFile = null;
-
-function compressImage(file, maxWidth = 600, quality = 0.7) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      img.src = e.target.result;
+    const firebaseConfig = {
+      apiKey: "AIzaSyDFh075x68NVbXfkvlPv4wa3uNi-rilcEk",
+      authDomain: "tokyo-14278.firebaseapp.com",
+      projectId: "tokyo-14278",
+      storageBucket: "tokyo-14278.appspot.com",
+      messagingSenderId: "831929477903",
+      appId: "1:831929477903:web:02cfff17d8c6b4c29d6c7a",
+      measurementId: "G-10T563NMRW"
     };
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      const scale = maxWidth / img.width;
-      canvas.width = maxWidth;
-      canvas.height = img.height * scale;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      canvas.toBlob((blob) => {
-        if (blob) {
-          resolve(new File([blob], file.name, { type: "image/jpeg" }));
-        } else {
-          reject("壓縮失敗");
-        }
-      }, "image/jpeg", quality);
-    };
-    reader.readAsDataURL(file);
-  });
-}
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
 
-fileInput.addEventListener("change", async () => {
-  const file = fileInput.files[0];
-  if (file) {
-    preview.src = URL.createObjectURL(file);
-    selectedFile = await compressImage(file);
-  }
-});
+    const displayNameInput = document.getElementById("displayName");
+    const fileInput = document.getElementById("avatar");
+    const preview = document.getElementById("preview");
+    const saveBtn = document.getElementById("saveBtn");
+    const statusText = document.getElementById("status");
 
-saveBtn.addEventListener("click", async () => {
-  if (!currentUser) return;
+    let selectedFile = null;
+    let currentUser = null;
 
-  statusText.textContent = "儲存中...";
-  let photoURL = currentUser.photoURL;
-
-  if (selectedFile) {
-    try {
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-      formData.append("upload_preset", "tokyo_album");
-      formData.append("folder", "/"); // 上傳到根目錄
-
-      const res = await fetch("https://api.cloudinary.com/v1_1/dd2lnjt52/image/upload", {
-        method: "POST",
-        body: formData
+    function compressImage(file, maxPixels = 2_000_000, quality = 0.7) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        const reader = new FileReader();
+        reader.onload = (e) => (img.src = e.target.result);
+        img.onload = () => {
+          const scale = Math.min(1, Math.sqrt(maxPixels / (img.width * img.height)));
+          const canvas = document.createElement("canvas");
+          canvas.width = img.width * scale;
+          canvas.height = img.height * scale;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob((blob) => {
+            if (blob) {
+              resolve(new File([blob], file.name, { type: "image/jpeg" }));
+            } else {
+              reject("壓縮失敗");
+            }
+          }, "image/jpeg", quality);
+        };
+        reader.readAsDataURL(file);
       });
-
-      const data = await res.json();
-      if (data.secure_url) {
-        photoURL = data.secure_url;
-      } else {
-        throw new Error("Cloudinary 上傳失敗");
-      }
-    } catch (error) {
-      console.error(error);
-      statusText.textContent = "儲存失敗：Cloudinary 上傳失敗";
-      return;
     }
-  }
 
-  try {
-    await updateProfile(currentUser, {
-      displayName: displayNameInput.value,
-      photoURL: photoURL
+    fileInput.addEventListener("change", async () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      if (file.size > 10 * 1024 * 1024) {
+        statusText.textContent = "圖片太大，請選擇小於 10MB 的圖片";
+        return;
+      }
+
+      if (preview.src.startsWith("blob:")) {
+        URL.revokeObjectURL(preview.src);
+      }
+
+      preview.src = URL.createObjectURL(file);
+      try {
+        selectedFile = await compressImage(file);
+      } catch (err) {
+        statusText.textContent = "圖片壓縮失敗";
+        console.error(err);
+      }
     });
-    statusText.textContent = "儲存成功！";
-  } catch (error) {
-    console.error(error);
-    statusText.textContent = "儲存失敗：Firebase 更新失敗";
-  }
-});
 
-// 登入狀態監聽：載入使用者資料
-onAuthStateChanged(auth, (user) => {
-  if (user) {
-    currentUser = user;
-    displayNameInput.value = user.displayName || "";
-    preview.src = user.photoURL || "";
-  } else {
-    statusText.textContent = "請先登入";
-  }
-});
-</script>
+    saveBtn.addEventListener("click", async () => {
+      if (!currentUser) return;
+
+      statusText.textContent = "儲存中...";
+      let photoURL = currentUser.photoURL;
+
+      if (selectedFile) {
+        try {
+          const formData = new FormData();
+          formData.append("file", selectedFile);
+          formData.append("upload_preset", "tokyo_album");
+          formData.append("folder", "tokyo-trip");
+
+          const res = await fetch("https://api.cloudinary.com/v1_1/dd2lnjt52/image/upload", {
+            method: "POST",
+            body: formData
+          });
+
+          const data = await res.json();
+          if (data.secure_url) {
+            photoURL = data.secure_url;
+          } else {
+            throw new Error("Cloudinary 上傳失敗");
+          }
+        } catch (error) {
+          console.error(error);
+          statusText.textContent = "儲存失敗：Cloudinary 上傳失敗";
+          return;
+        }
+      }
+
+      try {
+        await updateProfile(currentUser, {
+          displayName: displayNameInput.value,
+          photoURL: photoURL
+        });
+        statusText.textContent = "儲存成功！";
+      } catch (error) {
+        console.error(error);
+        statusText.textContent = "儲存失敗：Firebase 更新失敗";
+      }
+    });
+
+    // 取得使用者資料
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        currentUser = user;
+        displayNameInput.value = user.displayName || "";
+        if (user.photoURL) {
+          preview.src = user.photoURL;
+        }
+      } else {
+        statusText.textContent = "尚未登入";
+        saveBtn.disabled = true;
+      }
+    });
+  </script>
 </body>
 </html>
