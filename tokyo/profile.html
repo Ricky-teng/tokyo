@@ -4,36 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>個人資料設定</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.1/dist/tailwind.min.css" rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC&display=swap" rel="stylesheet" />
-  <style>
-    body {
-      font-family: 'Noto Sans TC', sans-serif;
-      background-color: #f0f4f8;
-    }
-  </style>
-</head>
-<body class="flex items-center justify-center min-h-screen">
-  <div class="bg-white shadow-lg rounded-xl p-8 w-full max-w-md">
-    <h1 class="text-2xl font-bold text-center mb-6 text-blue-700">個人資料設定</h1>
-
-    <label class="block mb-2 text-sm font-medium text-gray-700">顯示名稱</label>
-    <input type="text" id="displayName" class="w-full p-2 border border-gray-300 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-blue-300" />
-
-    <label class="block mb-2 text-sm font-medium text-gray-700">大頭貼</label>
-    <input type="file" id="avatar" accept="image/*" class="mb-2" />
-    <img id="preview" src="" alt="大頭貼預覽" class="rounded-full w-16 h-16 object-cover shadow mb-4" style="display: none;" />
-
-    <button id="saveBtn" class="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600 transition">
-      儲存
-    </button>
-
-    <p id="status" class="text-center mt-4 text-sm"></p>
-  </div>
-
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getAuth, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    // 初始化 Firebase (用你的原本設定)
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDFh075x68NVbXfkvlPv4wa3uNi-rilcEk",
@@ -44,6 +18,7 @@
       appId: "1:831929477903:web:02cfff17d8c6b4c29d6c7a",
       measurementId: "G-10T563NMRW"
     };
+
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
 
@@ -53,18 +28,31 @@
     const saveBtn = document.getElementById("saveBtn");
     const statusText = document.getElementById("status");
 
-    let selectedFile = null;
     let currentUser = null;
+    let selectedFile = null;
 
-    function compressImage(file, maxPixels = 2000000, quality = 0.7) {
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        currentUser = user;
+        displayNameInput.value = user.displayName || "";
+        if (user.photoURL) {
+          preview.src = user.photoURL;
+          preview.style.display = "block";
+        }
+      }
+    });
+
+    function compressImage(file, maxWidth = 400, quality = 0.7) {
       return new Promise((resolve, reject) => {
         const img = new Image();
         const reader = new FileReader();
-        reader.onload = (e) => (img.src = e.target.result);
+        reader.onload = (e) => {
+          img.src = e.target.result;
+        };
         img.onload = () => {
-          const scale = Math.min(1, Math.sqrt(maxPixels / (img.width * img.height)));
           const canvas = document.createElement("canvas");
-          canvas.width = img.width * scale;
+          const scale = maxWidth / img.width;
+          canvas.width = maxWidth;
           canvas.height = img.height * scale;
           const ctx = canvas.getContext("2d");
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
@@ -82,34 +70,16 @@
 
     fileInput.addEventListener("change", async () => {
       const file = fileInput.files[0];
-      if (!file) return;
-
-      if (file.size > 10 * 1024 * 1024) {
-        statusText.textContent = "圖片太大，請選擇小於 10MB 的圖片";
-        statusText.className = "text-red-500 text-center mt-4 text-sm";
-        return;
-      }
-
-      if (preview.src.startsWith("blob:")) {
-        URL.revokeObjectURL(preview.src);
-      }
-
-      try {
+      if (file) {
         selectedFile = await compressImage(file);
         preview.src = URL.createObjectURL(selectedFile);
         preview.style.display = "block";
-      } catch (err) {
-        statusText.textContent = "圖片壓縮失敗";
-        statusText.className = "text-red-500 text-center mt-4 text-sm";
-        console.error(err);
       }
     });
 
     saveBtn.addEventListener("click", async () => {
       if (!currentUser) return;
       statusText.textContent = "儲存中...";
-      statusText.className = "text-gray-500 text-center mt-4 text-sm";
-
       let photoURL = currentUser.photoURL;
 
       if (selectedFile) {
@@ -126,14 +96,14 @@
 
           const data = await res.json();
           if (data.secure_url) {
-            photoURL = data.secure_url;
+            // 套縮圖參數
+            photoURL = data.secure_url.replace('/upload/', '/upload/w_200,h_200,c_thumb,g_face,r_max/');
           } else {
             throw new Error("Cloudinary 上傳失敗");
           }
         } catch (error) {
           console.error(error);
           statusText.textContent = "儲存失敗：Cloudinary 上傳失敗";
-          statusText.className = "text-red-500 text-center mt-4 text-sm";
           return;
         }
       }
@@ -144,28 +114,62 @@
           photoURL: photoURL
         });
         statusText.textContent = "儲存成功！";
-        statusText.className = "text-green-600 text-center mt-4 text-sm";
       } catch (error) {
         console.error(error);
         statusText.textContent = "儲存失敗：Firebase 更新失敗";
-        statusText.className = "text-red-500 text-center mt-4 text-sm";
-      }
-    });
-
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        currentUser = user;
-        displayNameInput.value = user.displayName || "";
-        if (user.photoURL) {
-          preview.src = user.photoURL;
-          preview.style.display = "block";
-        }
-      } else {
-        statusText.textContent = "尚未登入";
-        statusText.className = "text-red-500 text-center mt-4 text-sm";
-        saveBtn.disabled = true;
       }
     });
   </script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f7f9fc;
+      padding: 20px;
+    }
+    h1 {
+      color: #333;
+    }
+    input[type="text"] {
+      padding: 5px;
+      width: 200px;
+    }
+    button {
+      padding: 6px 12px;
+      margin-top: 10px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #2980b9;
+    }
+    #preview {
+      display: none;
+      margin-top: 10px;
+      border-radius: 50%;
+      width: 64px;
+      height: 64px;
+      object-fit: cover;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    #status {
+      margin-top: 10px;
+      color: green;
+    }
+  </style>
+</head>
+<body>
+  <h1>個人資料設定</h1>
+  <label>顯示名稱</label>
+  <input type="text" id="displayName" /><br><br>
+
+  <label>大頭貼</label>
+  <input type="file" id="avatar" accept="image/*" /><br>
+  <img id="preview" src="" alt="大頭貼預覽" /><br>
+
+  <button id="saveBtn">儲存</button>
+  <p id="status"></p>
 </body>
 </html>
