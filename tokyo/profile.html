@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>個人資料設定</title>
   <script type="module">
-    // 初始化 Firebase (用你的原本設定)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 
@@ -96,7 +95,6 @@
 
           const data = await res.json();
           if (data.secure_url) {
-            // 套縮圖參數
             photoURL = data.secure_url.replace('/upload/', '/upload/w_200,h_200,c_thumb,g_face,r_max/');
           } else {
             throw new Error("Cloudinary 上傳失敗");
@@ -120,69 +118,141 @@
       }
     });
   </script>
+
   <style>
     body {
       font-family: Arial, sans-serif;
       background-color: #f7f9fc;
       padding: 20px;
     }
+
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background-color: white;
+      border-bottom: 1px solid #e0e0e0;
+      z-index: 999;
+    }
+
+    nav .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    nav ul {
+      display: flex;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    nav li {
+      margin-left: 15px;
+    }
+
+    nav a {
+      text-decoration: none;
+      color: #333;
+      font-weight: bold;
+    }
+
+    nav a:hover {
+      color: #3498db;
+    }
+
+    .content {
+      max-width: 500px;
+      margin: 100px auto 0 auto;
+      background-color: #fff;
+      padding: 30px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      border-radius: 8px;
+    }
+
     h1 {
       color: #333;
+      text-align: center;
+      margin-bottom: 20px;
     }
-    input[type="text"] {
-      padding: 5px;
-      width: 200px;
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
     }
+
+    input[type="text"], input[type="file"] {
+      padding: 8px;
+      width: 100%;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
     button {
-      padding: 6px 12px;
-      margin-top: 10px;
+      padding: 10px 20px;
       background-color: #3498db;
       color: white;
       border: none;
       border-radius: 4px;
       cursor: pointer;
+      width: 100%;
     }
+
     button:hover {
       background-color: #2980b9;
     }
+
     #preview {
       display: none;
-      margin-top: 10px;
+      margin: 10px auto;
       border-radius: 50%;
-      width: 64px;
-      height: 64px;
+      width: 80px;
+      height: 80px;
       object-fit: cover;
       box-shadow: 0 2px 6px rgba(0,0,0,0.2);
     }
+
     #status {
       margin-top: 10px;
+      text-align: center;
       color: green;
     }
   </style>
-  <nav class="fixed top-0 left-0 w-full bg-white border-b z-50">
-  <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-    <h1 class="text-xl font-bold text-blue-600">東京9日旅行</h1>
-    <ul class="flex space-x-4 text-sm font-medium">
-      <li><a href="index.html" class="hover:text-blue-600">首頁</a></li>
-      <li><a href="plan.html" class="hover:text-blue-600">每日行程</a></li>
-      <li><a href="map.html" class="hover:text-blue-600">地圖總覽</a></li>
-      <li><a href="album.html" class="hover:text-blue-600">相簿</a></li>
-      <li><a href="profile.html" class="hover:text-blue-600">個人檔案</a></li>
-      <li><a href="about.html" class="text-blue-600">關於我們</a></li>
-    </ul>
-  </div>
-</nav>
 </head>
+
 <body>
-  <h1>個人資料設定</h1>
-  <label>顯示名稱</label>
-  <input type="text" id="displayName" /><br><br>
+  <nav>
+    <div class="container">
+      <h1 class="logo">東京9日旅行</h1>
+      <ul>
+        <li><a href="index.html">首頁</a></li>
+        <li><a href="plan.html">每日行程</a></li>
+        <li><a href="map.html">地圖總覽</a></li>
+        <li><a href="album.html">相簿</a></li>
+        <li><a href="profile.html">個人檔案</a></li>
+        <li><a href="about.html">關於我們</a></li>
+      </ul>
+    </div>
+  </nav>
 
-  <label>大頭貼</label>
-  <input type="file" id="avatar" accept="image/*" /><br>
-  <img id="preview" src="" alt="大頭貼預覽" /><br>
+  <div class="content">
+    <h1>個人資料設定</h1>
+    <label>顯示名稱</label>
+    <input type="text" id="displayName" />
 
-  <button id="saveBtn">儲存</button>
-  <p id="status"></p>
+    <label>大頭貼</label>
+    <input type="file" id="avatar" accept="image/*" />
+    <img id="preview" src="" alt="大頭貼預覽" />
+
+    <button id="saveBtn">儲存</button>
+    <p id="status"></p>
+  </div>
 </body>
 </html>
