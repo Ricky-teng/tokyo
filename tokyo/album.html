@@ -10,7 +10,10 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/compressorjs@1.2.1/dist/compressor.min.js"></script>
-  <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY"></script>
+
+  <!-- ✅ Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 </head>
 <body class="bg-white text-gray-800">
 
@@ -114,17 +117,22 @@
 
   function initMap() {
     navigator.geolocation.getCurrentPosition(pos => {
-      const latlng = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-      map = new google.maps.Map(document.getElementById("map"), {
-        center: latlng, zoom: 14
+      const latlng = [pos.coords.latitude, pos.coords.longitude];
+      map = L.map('map').setView(latlng, 14);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      marker = L.marker(latlng, { draggable: true }).addTo(map);
+      currentLocation = { lat: latlng[0], lng: latlng[1] };
+
+      marker.on('dragend', function (e) {
+        const latlng = e.target.getLatLng();
+        currentLocation = { lat: latlng.lat, lng: latlng.lng };
       });
-      marker = new google.maps.Marker({ position: latlng, map, draggable: true });
-      currentLocation = latlng;
-      marker.addListener('dragend', () => currentLocation = marker.getPosition().toJSON());
     });
   }
-
-  window.initMap = initMap;
 
   document.getElementById('uploadBtn').onclick = async () => {
     const files = document.getElementById('fileInput').files;
