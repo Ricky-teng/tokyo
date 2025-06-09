@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>每日行程總覽</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+   iframe
+    {
+    position:fixed;
+    height: 650px;
+    left:10px;
+    bottom:10px;
+}
+  </style>
+</head>
+<body class="bg-white text-gray-800 font-sans">
+
+<!-- 導覽列 -->
+<nav class="fixed top-0 left-0 w-full bg-white border-b z-50">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+    <h1 class="text-xl font-bold text-blue-600">東京9日旅行</h1>
+    <ul class="flex space-x-4 text-sm font-medium">
+      <li><a href="index.html" class="hover:text-blue-600">首頁</a></li>
+      <li><a href="plan.html" class="text-blue-600">每日行程</a></li>
+      <li><a href="map.html" class="hover:text-blue-600">地圖總覽</a></li>
+      <li><a href="album.html" class="hover:text-blue-600">相簿</a></li>
+      <li><a href="about.html" class="hover:text-blue-600">關於我們</a></li>
+    </ul>
+  </div>
+</nav>
+
+
+<main class="pt-24 pb-12 max-w-6xl mx-auto px-4">
+    <iframe  src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d565352.3981333148!2d139.52758674959935!3d35.612757896165874!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1szh-TW!2stw!4v1746850487067!5m2!1szh-TW!2stw" width="1400" height="700" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+</main>
+</body>
+</html>

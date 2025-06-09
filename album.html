@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>Tokyo Trip Album</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/compressorjs@1.2.1/dist/compressor.min.js"></script>
+
+  <!-- ✅ Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+</head>
+<body class="bg-white text-gray-800">
+
+<!-- 🔹 Navbar -->
+<nav class="flex justify-between items-center p-4 bg-blue-600 text-white">
+
+  <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+    <h1 class="text-xl font-bold text-blue-600">東京9日旅行</h1>
+    <ul class="flex space-x-4 text-sm font-medium">
+      <li><a href="index.html" class="hover:text-blue-600">首頁</a></li>
+      <li><a href="plan.html" class="hover:text-blue-600">每日行程</a></li>
+      <li><a href="map.html" class="hover:text-blue-600">地圖總覽</a></li>
+      <li><a href="album.html" class="hover:text-blue-600">相簿</a></li>
+      <li><a href="profile.html" class="hover:text-blue-600">個人檔案</a></li>
+      <li><a href="about.html" class="hover:text-blue-600">關於我們</a></li>
+    </ul>
+  </div>
+
+  <div id="user-info" class="flex items-center gap-2 hidden">
+    <img id="user-avatar" class="w-8 h-8 rounded-full" src="" alt="Avatar">
+    <span id="user-name" class="font-medium"></span>
+    <button id="logoutBtn" class="ml-2 px-2 py-1 bg-red-500 rounded">登出</button>
+  </div>
+  <button id="loginBtn" class="px-3 py-1 bg-green-500 rounded">使用 Google 登入</button>
+</nav>
+
+<!-- 🔹 Upload Section -->
+<div class="p-4 space-y-4">
+  <input type="file" id="fileInput" accept="image/*,video/*" multiple>
+  <div id="map" class="w-full h-64 border rounded"></div>
+  <button id="uploadBtn" class="px-4 py-2 bg-blue-500 text-white rounded">上傳</button>
+</div>
+
+<!-- 🔹 Filters -->
+<div class="flex flex-wrap items-center gap-4 p-4">
+  <select id="typeFilter" class="border px-2 py-1 rounded">
+    <option value="all">全部</option>
+    <option value="image">圖片</option>
+    <option value="video">影片</option>
+  </select>
+  <select id="sortFilter" class="border px-2 py-1 rounded">
+    <option value="newest">最新</option>
+    <option value="oldest">最舊</option>
+    <option value="likes">喜愛數</option>
+  </select>
+  <button id="mapViewBtn" class="ml-auto bg-green-600 text-white px-4 py-2 rounded">查看地圖</button>
+</div>
+
+<!-- 🔹 Gallery -->
+<div id="gallery" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 p-4"></div>
+
+<!-- 🔹 Modal -->
+<div id="modal" class="fixed inset-0 bg-black/70 flex items-center justify-center hidden z-50">
+  <div class="relative bg-white rounded max-w-3xl max-h-[90vh] overflow-auto">
+    <button id="modalClose" class="absolute top-2 right-2 text-xl">✖</button>
+    <img id="modalImage" class="max-w-full max-h-[80vh] mx-auto" />
+    <video id="modalVideo" controls class="max-w-full max-h-[80vh] mx-auto hidden"></video>
+  </div>
+</div>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyDFh075x68NVbXfkvlPv4wa3uNi-rilcEk",
+    authDomain: "tokyo-14278.firebaseapp.com",
+    projectId: "tokyo-14278",
+    storageBucket: "tokyo-14278.appspot.com",
+    messagingSenderId: "831929477903",
+    appId: "1:831929477903:web:02cfff17d8c6b4c29d6c7a",
+    measurementId: "G-10T563NMRW"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+  const storage = firebase.storage();
+
+  let currentUser = null;
+  let currentLocation = null;
+  let map, marker;
+
+  auth.onAuthStateChanged(async user => {
+    if (user) {
+      currentUser = user;
+      const userInfo = document.getElementById('user-info');
+      document.getElementById('user-name').textContent = user.displayName || user.email;
+      document.getElementById('user-avatar').src = user.photoURL || 'https://via.placeholder.com/40';
+      document.getElementById('loginBtn').classList.add('hidden');
+      userInfo.classList.remove('hidden');
+    } else {
+      currentUser = null;
+      document.getElementById('loginBtn').classList.remove('hidden');
+      document.getElementById('user-info').classList.add('hidden');
+    }
+    loadGallery();
+  });
+
+  document.getElementById('loginBtn').onclick = () => {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider);
+  };
+  document.getElementById('logoutBtn').onclick = () => auth.signOut();
+
+  function initMap() {
+    navigator.geolocation.getCurrentPosition(pos => {
+      const latlng = [pos.coords.latitude, pos.coords.longitude];
+      map = L.map('map').setView(latlng, 14);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      marker = L.marker(latlng, { draggable: true }).addTo(map);
+      currentLocation = { lat: latlng[0], lng: latlng[1] };
+
+      marker.on('dragend', function (e) {
+        const latlng = e.target.getLatLng();
+        currentLocation = { lat: latlng.lat, lng: latlng.lng };
+      });
+    });
+  }
+
+  document.getElementById('uploadBtn').onclick = async () => {
+    const files = document.getElementById('fileInput').files;
+    if (!files.length || !currentUser) return alert('請登入並選擇檔案');
+    for (const file of files) {
+      const type = file.type.startsWith('image') ? 'image' : 'video';
+      let uploadFile = file;
+      if (type === 'image') {
+        uploadFile = await new Promise(resolve => {
+          new Compressor(file, { quality: 0.6, success: resolve });
+        });
+      }
+      const ref = storage.ref().child(Date.now() + '_' + file.name);
+      await ref.put(uploadFile);
+      const url = await ref.getDownloadURL();
+      await db.collection('photos').add({
+        url, type,
+        uid: currentUser.uid,
+        name: currentUser.displayName || '',
+        avatar: currentUser.photoURL || '',
+        likes: 0,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        location: currentLocation
+      });
+    }
+    loadGallery();
+  };
+
+  async function loadGallery() {
+    let query = db.collection('photos');
+    const type = document.getElementById('typeFilter').value;
+    const sort = document.getElementById('sortFilter').value;
+
+    if (type !== 'all') query = query.where('type', '==', type);
+    if (sort === 'newest') query = query.orderBy('createdAt', 'desc');
+    else if (sort === 'oldest') query = query.orderBy('createdAt', 'asc');
+    else if (sort === 'likes') query = query.orderBy('likes', 'desc');
+
+    const snapshot = await query.get();
+    const gallery = document.getElementById('gallery');
+    gallery.innerHTML = '';
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const div = document.createElement('div');
+      div.className = 'relative group';
+      div.innerHTML = `
+        ${data.type === 'image' ? `<img src="${data.url}" class="w-full rounded cursor-pointer">` : `<video src="${data.url}" controls class="w-full rounded"></video>`}
+        <button data-id="${doc.id}" class="like absolute top-2 right-2 bg-white/80 text-red-500 px-2 py-1 rounded">❤️ ${data.likes}</button>
+      `;
+      gallery.appendChild(div);
+      div.querySelector('img')?.addEventListener('click', () => showModal(data.url, 'image'));
+      div.querySelector('video')?.addEventListener('click', () => showModal(data.url, 'video'));
+      div.querySelector('.like').addEventListener('click', async e => {
+        e.stopPropagation();
+        await db.collection('photos').doc(doc.id).update({ likes: data.likes + 1 });
+        loadGallery();
+      });
+    });
+  }
+
+  function showModal(url, type) {
+    const modal = document.getElementById('modal');
+    const img = document.getElementById('modalImage');
+    const video = document.getElementById('modalVideo');
+    modal.classList.remove('hidden');
+    if (type === 'image') {
+      img.src = url;
+      img.classList.remove('hidden');
+      video.classList.add('hidden');
+    } else {
+      video.src = url;
+      video.classList.remove('hidden');
+      img.classList.add('hidden');
+    }
+  }
+
+  document.getElementById('modalClose').onclick = () => {
+    document.getElementById('modal').classList.add('hidden');
+  };
+
+  document.getElementById('typeFilter').onchange = loadGallery;
+  document.getElementById('sortFilter').onchange = loadGallery;
+  document.getElementById('mapViewBtn').onclick = () => location.href = 'photomap.html';
+
+  window.onload = () => initMap();
+</script>
+</body>
+</html>

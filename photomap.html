@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <nav class="bg-blue-500 text-white p-4 flex justify-between items-center">
+ <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+    <h1 class="text-xl font-bold text-blue-600">東京9日旅行</h1>
+    <ul class="flex space-x-4 text-sm font-medium">
+      <li><a href="index.html" class="text-blue-600">首頁</a></li>
+      <li><a href="plan.html" class="hover:text-blue-600">每日行程</a></li>
+      <li><a href="map.html" class="hover:text-blue-600">地圖總覽</a></li>
+      <li><a href="album.html" class="hover:text-blue-600">相簿</a></li>
+      <li><a href="profile.html" class="hover:text-blue-600">個人檔案</a></li>
+      <li><a href="about.html" class="hover:text-blue-600">關於我們</a></li>
+    </ul>
+  </div>
+</nav>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>相簿地圖</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    #map { height: 100vh; }
+    .leaflet-popup-content img, .leaflet-popup-content video {
+      max-width: 200px;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDFh075x68NVbXfkvlPv4wa3uNi-rilcEk",
+      authDomain: "tokyo-14278.firebaseapp.com",
+      projectId: "tokyo-14278",
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // 初始化地圖
+const map = L.map('map');
+
+// 設定包含東京與富士山的地理範圍
+const bounds = L.latLngBounds([
+  [35.3606, 138.7274], // 富士山
+  [35.6895, 139.6917]  // 東京
+]);
+map.fitBounds(bounds);
+
+// 加入底圖圖層
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap 貢獻者'
+}).addTo(map);
+
+    db.collection("photos").get().then(snapshot => {
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        if (!data.location || !data.location.lat || !data.location.lng) return;
+
+        const lat = data.location.lat;
+        const lng = data.location.lng;
+        const url = data.url;
+        const type = data.type;
+
+        const content = type === "image"
+          ? `<img src="${url}" alt="photo"/>`
+          : `<video controls src="${url}"></video>`;
+
+        L.marker([lat, lng]).addTo(map)
+          .bindPopup(content);
+      });
+    });
+  </script>
+</body>
+</html>
